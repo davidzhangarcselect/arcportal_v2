@@ -2996,8 +2996,7 @@ const ArcPortal = () => {
                           </thead>
                           <tbody>
                             {evaluationPeriods.map((period, index) => {
-                              const periodTotal = calculatePeriodTotal(index);
-                              const grandTotal = calculateGrandTotal();
+                               const periodTotal = calculatePeriodTotal(period.id);                              const grandTotal = calculateGrandTotal();
                               const percentage = grandTotal > 0 ? (periodTotal / grandTotal) * 100 : 0;
                               
                               return (
@@ -3032,8 +3031,7 @@ const ArcPortal = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {clins.map(clin => {
-                              const clinTotal = calculateClinTotal(clin.id);
+                             {Object.values(periodClins).flat().map(clin => {                              const clinTotal = calculateClinTotal(clin.id);
                               const grandTotal = calculateGrandTotal();
                               const percentage = grandTotal > 0 ? (clinTotal / grandTotal) * 100 : 0;
                               
@@ -3068,8 +3066,7 @@ const ArcPortal = () => {
                           ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </div>
                         <div className="text-sm text-blue-700 mt-2">
-                          {userType === 'vendor' ? 'Your Proposal' : 'Vendor Proposal'} • {clins.length} CLINs • {evaluationPeriods.length} Periods
-                        </div>
+                           {userType === 'vendor' ? 'Your Proposal' : 'Vendor Proposal'} • {Object.values(periodClins).flat().length} CLINs • {evaluationPeriods.length} Periods                        </div>
                       </div>
                     </div>
                   </div>
