@@ -68,7 +68,6 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    console.log('PUT request body:', JSON.stringify(body, null, 2))
     const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins } = body
 
     if (!id) {
@@ -81,25 +80,19 @@ export async function PUT(request: Request) {
     // Handle CLINs update if provided
     let clinUpdateData = {}
     if (clins) {
-      console.log('Processing CLINs:', JSON.stringify(clins, null, 2))
-      
       // Delete existing CLINs and create new ones
-      const deleteResult = await prisma.clin.deleteMany({
+      await prisma.clin.deleteMany({
         where: { solicitationId: id }
       })
-      console.log('Deleted CLINs:', deleteResult.count)
-      
-      const clinData = clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
-        name: clin.name,
-        description: clin.description,
-        pricingModel: clin.pricingModel,
-        periodId: clin.periodId
-      }))
-      console.log('CLIN data to create:', JSON.stringify(clinData, null, 2))
       
       clinUpdateData = {
         clins: {
-          create: clinData
+          create: clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
+            name: clin.name,
+            description: clin.description,
+            pricingModel: clin.pricingModel,
+            periodId: clin.periodId
+          }))
         }
       }
     }
@@ -120,8 +113,6 @@ export async function PUT(request: Request) {
     if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
     if (status !== undefined) updateData.status = status;
 
-    console.log('About to update solicitation with data:', JSON.stringify(updateData, null, 2))
-    
     const solicitation = await prisma.solicitation.update({
       where: { id },
       data: updateData,
@@ -135,13 +126,6 @@ export async function PUT(request: Request) {
         }
       }
     })
-
-    console.log('Updated solicitation result:', JSON.stringify({
-      id: solicitation.id,
-      evaluationPeriods: (solicitation as any).evaluationPeriods,
-      clinsCount: solicitation.clins.length,
-      clins: solicitation.clins
-    }, null, 2))
 
     return NextResponse.json(solicitation)
   } catch (error) {
