@@ -2329,6 +2329,12 @@ const ArcPortal = () => {
     ]);
     const [pricingData, setPricingData] = useState<any>({});
     const [activeTab, setActiveTab] = useState(userType === 'admin' ? 'setup' : 'pricing');
+    const [isSaving, setIsSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [originalSetup, setOriginalSetup] = useState<{clins: any[], evaluationPeriods: any[]}>({
+      clins: [],
+      evaluationPeriods: []
+    });
 
     // Initialize with solicitation data
     useEffect(() => {
@@ -2345,6 +2351,13 @@ const ArcPortal = () => {
           description: clin.description || 'Contract Line Item'
         }));
         setClins(solicitationClins);
+
+        // Store original setup for change tracking
+        setOriginalSetup({
+          clins: solicitationClins,
+          evaluationPeriods: periods
+        });
+        setHasUnsavedChanges(false);
                 
         // Initialize pricing data for current vendor
         const initialPricing: any = {};
@@ -2363,6 +2376,70 @@ const ArcPortal = () => {
         setPricingData(initialPricing);
       }
     }, [solicitation, currentUser]);
+
+    // Track changes for unsaved changes indicator
+    useEffect(() => {
+      if (userType === 'admin') {
+        const hasChanges = JSON.stringify(clins) !== JSON.stringify(originalSetup.clins) ||
+                          JSON.stringify(evaluationPeriods) !== JSON.stringify(originalSetup.evaluationPeriods);
+        setHasUnsavedChanges(hasChanges);
+      }
+    }, [clins, evaluationPeriods, originalSetup, userType]);
+
+    // Save setup changes to database
+    const saveSetup = async () => {
+      if (!solicitation || userType !== 'admin') return;
+      
+      setIsSaving(true);
+      try {
+        const response = await fetch('/api/solicitations', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: solicitation.id,
+            evaluationPeriods: evaluationPeriods,
+            clins: clins.map(clin => ({
+              name: clin.name,
+              description: clin.description,
+              pricingModel: clin.pricingModel
+            }))
+          }),
+        });
+
+        if (response.ok) {
+          const updatedSolicitation = await response.json();
+          
+          // Update the original setup to reflect saved state
+          setOriginalSetup({
+            clins: clins,
+            evaluationPeriods: evaluationPeriods
+          });
+          setHasUnsavedChanges(false);
+          
+          // Update the solicitation in the parent state
+          setSolicitations(prev => prev.map(s => 
+            s.id === solicitation.id ? {
+              ...s,
+              clins: updatedSolicitation.clins,
+              evaluationPeriods: evaluationPeriods
+            } : s
+          ));
+          
+          alert('Setup saved successfully!');
+        } else {
+          const errorData = await response.text();
+          console.error('Failed to save setup:', errorData);
+          alert(`Failed to save setup: ${errorData}`);
+        }
+      } catch (error) {
+        console.error('Error saving setup:', error);
+        alert('Network error while saving setup');
+      } finally {
+        setIsSaving(false);
+      }
+    };
 
     // Admin functions for managing CLINs and evaluation periods
     const addClin = () => {
@@ -2724,6 +2801,41 @@ const ArcPortal = () => {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Save Button */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-2">
+                    {hasUnsavedChanges && (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">You have unsaved changes</span>
+                      </div>
+                    )}
+                    {!hasUnsavedChanges && (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-sm font-medium">All changes saved</span>
+                      </div>
+                    )}
+                  </div>
+                  <Button 
+                    onClick={saveSetup}
+                    disabled={!hasUnsavedChanges || isSaving}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Save Setup
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </TabsContent>
           )}

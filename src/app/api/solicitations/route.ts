@@ -68,13 +68,32 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status } = body
+    const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins } = body
 
     if (!id) {
       return NextResponse.json(
         { error: 'Solicitation ID is required' },
         { status: 400 }
       )
+    }
+
+    // Handle CLINs update if provided
+    let clinUpdateData = {}
+    if (clins) {
+      // Delete existing CLINs and create new ones
+      await prisma.clin.deleteMany({
+        where: { solicitationId: id }
+      })
+      
+      clinUpdateData = {
+        clins: {
+          create: clins.map((clin: { name: string; description: string; pricingModel: string }) => ({
+            name: clin.name,
+            description: clin.description,
+            pricingModel: clin.pricingModel
+          }))
+        }
+      }
     }
 
     const solicitation = await prisma.solicitation.update({
@@ -87,7 +106,9 @@ export async function PUT(request: Request) {
         dueDate: dueDate ? new Date(dueDate) : undefined,
         questionCutoffDate: questionCutoffDate ? new Date(questionCutoffDate) : null,
         proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
-        status
+        ...(evaluationPeriods && { evaluationPeriods: JSON.stringify(evaluationPeriods) }),
+        status,
+        ...clinUpdateData
       },
       include: {
         clins: true,
