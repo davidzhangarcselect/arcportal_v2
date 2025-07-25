@@ -26,6 +26,15 @@ const ArcPortal = () => {
   const [selectedSolicitation, setSelectedSolicitation] = useState<SampleSolicitation | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<SampleProposal | null>(null);
   const [solicitationActiveTab, setSolicitationActiveTab] = useState('overview');
+  const [showCreateSolicitation, setShowCreateSolicitation] = useState(false);
+  const [newSolicitationData, setNewSolicitationData] = useState({
+    number: '',
+    title: '',
+    description: '',
+    agency: '',
+    dueDate: '',
+    status: 'open' as 'open' | 'closed'
+  });
   
   // Data states
   const [vendors, setVendors] = useState<SampleUser[]>([]);
@@ -234,6 +243,52 @@ const ArcPortal = () => {
       }
     } catch (error) {
       console.error('Error answering question:', error);
+    }
+  };
+
+  // Create new solicitation (admin only)
+  const createSolicitation = async (solicitationData: typeof newSolicitationData) => {
+    try {
+      const response = await fetch('/api/solicitations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(solicitationData),
+      });
+
+      if (response.ok) {
+        const newSolicitation = await response.json();
+        const formattedSolicitation = {
+          id: newSolicitation.id,
+          number: newSolicitation.number,
+          title: newSolicitation.title,
+          description: newSolicitation.description,
+          agency: newSolicitation.agency,
+          dueDate: newSolicitation.dueDate,
+          status: newSolicitation.status as 'open' | 'closed',
+          attachments: []
+        };
+        
+        setSolicitations(prev => [formattedSolicitation, ...prev]);
+        setShowCreateSolicitation(false);
+        setNewSolicitationData({
+          number: '',
+          title: '',
+          description: '',
+          agency: '',
+          dueDate: '',
+          status: 'open'
+        });
+        alert('Solicitation created successfully!');
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to create solicitation. Status:', response.status, 'Error:', errorData);
+        alert(`Failed to create solicitation: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error creating solicitation:', error);
+      alert('Network error while creating solicitation');
     }
   };
 
@@ -745,8 +800,101 @@ const ArcPortal = () => {
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
+            {userType === 'admin' && (
+              <Button onClick={() => setShowCreateSolicitation(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Solicitation
+              </Button>
+            )}
           </div>
         </div>
+
+        {showCreateSolicitation && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create New Solicitation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="number">Solicitation Number</Label>
+                  <Input
+                    id="number"
+                    value={newSolicitationData.number}
+                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="e.g., RFP-2024-001"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="agency">Agency</Label>
+                  <Input
+                    id="agency"
+                    value={newSolicitationData.agency}
+                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    placeholder="e.g., Department of Defense"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={newSolicitationData.title}
+                  onChange={(e) => setNewSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter solicitation title"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={newSolicitationData.description}
+                  onChange={(e) => setNewSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter detailed description"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="dueDate">Due Date</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={newSolicitationData.dueDate}
+                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status">Status</Label>
+                  <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setNewSolicitationData(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowCreateSolicitation(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => createSolicitation(newSolicitationData)}
+                  disabled={!newSolicitationData.number || !newSolicitationData.title || !newSolicitationData.description}
+                >
+                  Create Solicitation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <div className="grid gap-4">
           {solicitations.map(solicitation => (
             <Card key={solicitation.id} className="hover:shadow-md transition-shadow cursor-pointer"
