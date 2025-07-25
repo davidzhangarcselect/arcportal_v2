@@ -627,7 +627,14 @@ const ArcPortal = () => {
               key={item.id}
               variant={activeView === item.id ? 'default' : 'ghost'}
               className="w-full justify-start"
-              onClick={() => setActiveView(item.id)}
+              onClick={() => {
+                setActiveView(item.id);
+                // Reset solicitation view when clicking on solicitations menu
+                if (item.id === 'solicitations') {
+                  setSelectedSolicitation(null);
+                  setSolicitationActiveTab('overview');
+                }
+              }}
             >
               <item.icon className="h-4 w-4 mr-2" />
               {item.label}
@@ -976,16 +983,31 @@ const ArcPortal = () => {
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => {
-            setSelectedSolicitation(null);
-            setSolicitationActiveTab('overview');
-          }}>
-            ← Back to Solicitations
-          </Button>
-          <div>
-            <h2 className="text-2xl font-bold">{solicitation.number}</h2>
-            <p className="text-gray-600">{solicitation.title}</p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>Solicitations</span>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">{solicitation.number}</span>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 font-medium"
+              onClick={() => {
+                setSelectedSolicitation(null);
+                setSolicitationActiveTab('overview');
+              }}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              ← Back to All Solicitations
+            </Button>
+            
+            <div>
+              <h2 className="text-2xl font-bold">{solicitation.number}</h2>
+              <p className="text-gray-600">{solicitation.title}</p>
+            </div>
           </div>
         </div>
 
