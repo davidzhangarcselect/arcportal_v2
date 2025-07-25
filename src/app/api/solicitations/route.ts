@@ -64,3 +64,48 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Solicitation ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const solicitation = await prisma.solicitation.update({
+      where: { id },
+      data: {
+        number,
+        title,
+        agency,
+        description,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+        questionCutoffDate: questionCutoffDate ? new Date(questionCutoffDate) : null,
+        proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
+        status
+      },
+      include: {
+        clins: true,
+        _count: {
+          select: {
+            proposals: true,
+            questions: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(solicitation)
+  } catch (error) {
+    console.error('Error updating solicitation:', error)
+    return NextResponse.json(
+      { error: 'Failed to update solicitation' },
+      { status: 500 }
+    )
+  }
+}

@@ -38,6 +38,18 @@ const ArcPortal = () => {
     proposalCutoffDate: '',
     status: 'open' as 'open' | 'closed'
   });
+  const [showEditSolicitation, setShowEditSolicitation] = useState(false);
+  const [editSolicitationData, setEditSolicitationData] = useState({
+    id: '',
+    number: '',
+    title: '',
+    description: '',
+    agency: '',
+    dueDate: '',
+    questionCutoffDate: '',
+    proposalCutoffDate: '',
+    status: 'open' as 'open' | 'closed'
+  });
   
   // Cutoff utility functions
   const isQuestionCutoffPassed = (solicitation: SampleSolicitation) => {
@@ -188,7 +200,7 @@ const ArcPortal = () => {
   // Vendor registration
   const registerVendor = (vendorData: Partial<SampleUser>) => {
     const newVendor: SampleUser = {
-      id: Math.max(...vendors.map(v => v.id), 0) + 1,
+      id: `vendor_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       ...vendorData,
       email: vendorData.email || '',
       socioEconomicStatus: vendorData.socioEconomicStatus || [],
@@ -200,7 +212,7 @@ const ArcPortal = () => {
   };
 
   // Question submission
-  const submitQuestion = async (solicitationId: number, questionText: string) => {
+  const submitQuestion = async (solicitationId: string, questionText: string) => {
     if (!questionText.trim()) {
       console.error('Question text is empty');
       return;
@@ -262,7 +274,7 @@ const ArcPortal = () => {
   };
 
   // Admin question answering
-  const answerQuestion = async (questionId: number, answer: string) => {
+  const answerQuestion = async (questionId: string, answer: string) => {
     try {
       const response = await fetch('/api/questions', {
         method: 'PATCH',
@@ -348,6 +360,75 @@ const ArcPortal = () => {
     }
   };
 
+  // Update solicitation
+  const updateSolicitation = async (solicitationData: typeof editSolicitationData) => {
+    try {
+      const response = await fetch('/api/solicitations', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(solicitationData),
+      });
+
+      if (response.ok) {
+        const updatedSolicitation = await response.json();
+        const formattedSolicitation = {
+          id: updatedSolicitation.id,
+          number: updatedSolicitation.number,
+          title: updatedSolicitation.title,
+          description: updatedSolicitation.description,
+          agency: updatedSolicitation.agency,
+          dueDate: updatedSolicitation.dueDate,
+          questionCutoffDate: updatedSolicitation.questionCutoffDate ? new Date(updatedSolicitation.questionCutoffDate).toISOString().slice(0, 16) : undefined,
+          proposalCutoffDate: updatedSolicitation.proposalCutoffDate ? new Date(updatedSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
+          status: updatedSolicitation.status.toLowerCase() as 'open' | 'closed',
+          attachments: [],
+          clins: updatedSolicitation.clins || []
+        };
+        
+        setSolicitations(prev => prev.map(s => s.id === formattedSolicitation.id ? formattedSolicitation : s));
+        setSelectedSolicitation(formattedSolicitation);
+        setShowEditSolicitation(false);
+        setEditSolicitationData({
+          id: '',
+          number: '',
+          title: '',
+          description: '',
+          agency: '',
+          dueDate: '',
+          questionCutoffDate: '',
+          proposalCutoffDate: '',
+          status: 'open'
+        });
+        alert('Solicitation updated successfully!');
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to update solicitation. Status:', response.status, 'Error:', errorData);
+        alert(`Failed to update solicitation: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error updating solicitation:', error);
+      alert('Network error while updating solicitation');
+    }
+  };
+
+  // Function to start editing a solicitation
+  const startEditSolicitation = (solicitation: SampleSolicitation) => {
+    setEditSolicitationData({
+      id: solicitation.id,
+      number: solicitation.number,
+      title: solicitation.title,
+      description: solicitation.description,
+      agency: solicitation.agency,
+      dueDate: solicitation.dueDate ? new Date(solicitation.dueDate).toISOString().slice(0, 16) : '',
+      questionCutoffDate: solicitation.questionCutoffDate ? new Date(solicitation.questionCutoffDate).toISOString().slice(0, 16) : '',
+      proposalCutoffDate: solicitation.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toISOString().slice(0, 16) : '',
+      status: solicitation.status.toLowerCase() as 'open' | 'closed'
+    });
+    setShowEditSolicitation(true);
+  };
+
   // Proposal submission
   const submitProposal = async (proposalData: Partial<SampleProposal>) => {
     try {
@@ -387,7 +468,7 @@ const ArcPortal = () => {
   };
 
   // Update proposal
-  const updateProposal = (proposalId: number, updatedData: Partial<SampleProposal>) => {
+  const updateProposal = (proposalId: string, updatedData: Partial<SampleProposal>) => {
     setProposals(prev => prev.map(p => 
       p.id === proposalId ? { ...p, ...updatedData } : p
     ));
@@ -983,6 +1064,113 @@ const ArcPortal = () => {
             </CardContent>
           </Card>
         )}
+
+        {showEditSolicitation && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Solicitation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-number">Solicitation Number</Label>
+                  <Input
+                    id="edit-number"
+                    value={editSolicitationData.number}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="e.g., RFP-2024-001"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-agency">Agency</Label>
+                  <Input
+                    id="edit-agency"
+                    value={editSolicitationData.agency}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    placeholder="e.g., Department of Defense"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editSolicitationData.title}
+                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter solicitation title"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editSolicitationData.description}
+                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter detailed description"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="edit-dueDate">Proposal Due Date</Label>
+                  <Input
+                    id="edit-dueDate"
+                    type="datetime-local"
+                    value={editSolicitationData.dueDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff</Label>
+                  <Input
+                    id="edit-questionCutoffDate"
+                    type="datetime-local"
+                    value={editSolicitationData.questionCutoffDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff</Label>
+                  <Input
+                    id="edit-proposalCutoffDate"
+                    type="datetime-local"
+                    value={editSolicitationData.proposalCutoffDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setEditSolicitationData(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowEditSolicitation(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => updateSolicitation(editSolicitationData)}
+                  disabled={!editSolicitationData.number || !editSolicitationData.title || !editSolicitationData.description}
+                >
+                  Update Solicitation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-4">
           {solicitations.map(solicitation => (
             <Card key={solicitation.id} className="hover:shadow-md transition-shadow cursor-pointer"
@@ -1033,7 +1221,7 @@ const ArcPortal = () => {
     const [newQuestion, setNewQuestion] = useState('');
     const solicitationQuestions = questions.filter(q => q.solicitationId === solicitation.id);
     const [newAnswer, setNewAnswer] = useState('');
-    const [answeringQuestion, setAnsweringQuestion] = useState<number | null>(null);
+    const [answeringQuestion, setAnsweringQuestion] = useState<string | null>(null);
 
     const handleSubmitQuestion = async () => {
       if (!newQuestion.trim()) return;
@@ -1103,7 +1291,18 @@ const ArcPortal = () => {
           <TabsContent value="overview" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Solicitation Information</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle>Solicitation Information</CardTitle>
+                  {userType === 'admin' && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => startEditSolicitation(solicitation)}
+                    >
+                      Edit
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -1649,7 +1848,7 @@ const ArcPortal = () => {
     const [offerors, setOfferors] = useState<any[]>([]);
     const [clins, setClins] = useState<any[]>([]);
     const [evaluationPeriods, setEvaluationPeriods] = useState([
-      { id: 1, name: 'Base Year', type: 'base' }
+      { id: 'base_year_1', name: 'Base Year', type: 'base' }
     ]);
     const [evaluationResults, setEvaluationResults] = useState<any>({});
     const [pricingData, setPricingData] = useState<any>({});
@@ -1690,7 +1889,7 @@ const ArcPortal = () => {
     }, [solicitation, currentUser]);
 
     const addClin = () => {
-      const newId = Math.max(...clins.map(c => c.id), 0) + 1;
+      const newId = `clin_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const newClin = {
         id: newId,
         name: `CLIN ${String(clins.length + 1).padStart(4, '0')}`,
@@ -1735,7 +1934,7 @@ const ArcPortal = () => {
     };
 
     const addEvaluationPeriod = () => {
-      const newId = Math.max(...evaluationPeriods.map(p => p.id), 0) + 1;
+      const newId = `period_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const newPeriod = {
         id: newId,
         name: `Option Year ${evaluationPeriods.filter(p => p.type === 'option').length + 1}`,
@@ -2359,7 +2558,7 @@ const ArcPortal = () => {
   };
 
   // Proposal Detail View Component
-  const ProposalDetailView = ({ proposal, onBack, onUpdate }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: number, data: any) => void }) => {
+  const ProposalDetailView = ({ proposal, onBack, onUpdate }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void }) => {
     const solicitation = solicitations.find(s => s.id === proposal.solicitationId);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({
@@ -3104,10 +3303,10 @@ const ArcPortal = () => {
 
   // Q&A Management Component (Admin only)
   const QAManagement = () => {
-    const [answeringQuestion, setAnsweringQuestion] = useState<number | null>(null);
+    const [answeringQuestion, setAnsweringQuestion] = useState<string | null>(null);
     const [newAnswer, setNewAnswer] = useState('');
 
-    const handleAnswerQuestion = async (questionId: number, answer: string) => {
+    const handleAnswerQuestion = async (questionId: string, answer: string) => {
       if (!answer.trim()) return;
       await answerQuestion(questionId, answer);
       setAnsweringQuestion(null);

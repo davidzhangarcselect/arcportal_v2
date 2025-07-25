@@ -75,7 +75,7 @@ export interface FileAttachment {
 
 // Frontend-only types for the prototype
 export interface SampleSolicitation {
-  id: number;
+  id: string;
   number: string;
   title: string;
   agency: string;
@@ -89,16 +89,16 @@ export interface SampleSolicitation {
 }
 
 export interface SampleClin {
-  id: number;
+  id: string;
   name: string;
   description: string;
   pricingModel: string;
 }
 
 export interface SampleQuestion {
-  id: number;
-  solicitationId: number;
-  vendorId: number;
+  id: string;
+  solicitationId: string;
+  vendorId: string;
   question: string;
   answer: string;
   status: string;
@@ -107,9 +107,9 @@ export interface SampleQuestion {
 }
 
 export interface SampleProposal {
-  id: number;
-  solicitationId: number;
-  vendorId: number;
+  id: string;
+  solicitationId: string;
+  vendorId: string;
   status: string;
   submissionDate: string;
   notes?: string;
@@ -119,7 +119,7 @@ export interface SampleProposal {
 }
 
 export interface SampleUser {
-  id: number;
+  id: string;
   name?: string;
   email: string;
   companyName?: string;
