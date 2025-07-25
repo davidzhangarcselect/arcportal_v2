@@ -50,11 +50,16 @@ export async function PATCH(request: Request) {
     const body = await request.json()
     const { email } = body
 
+    console.log('Looking up user with email:', email)
+
     const user = await prisma.user.findUnique({
       where: { email }
     })
 
+    console.log('User found:', user ? 'Yes' : 'No', user?.email, user?.role)
+
     if (!user) {
+      console.log('User not found in database')
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }

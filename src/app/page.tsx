@@ -289,7 +289,7 @@ const ArcPortal = () => {
       const [isRegistering, setIsRegistering] = useState(false);
       const [loginType, setLoginType] = useState('vendor');
       const [formData, setFormData] = useState({
-        email: '',
+        email: 'vendor@techcorp.com',
         password: '',
         companyName: '',
         ueiNumber: '',
@@ -310,7 +310,16 @@ const ArcPortal = () => {
         if (isRegistering && loginType === 'vendor') {
           registerVendor(formData);
         } else {
+          if (!formData.email.trim()) {
+            alert('Please enter an email address');
+            return;
+          }
+          
           try {
+            console.log('Attempting login with email:', formData.email);
+            console.log('Login type:', loginType);
+            console.log('Form data:', formData);
+            
             const response = await fetch('/api/users', {
               method: 'PATCH',
               headers: {
@@ -321,8 +330,12 @@ const ArcPortal = () => {
               }),
             });
 
+            console.log('Login response status:', response.status);
+
             if (response.ok) {
               const userData = await response.json();
+              console.log('User data received:', userData);
+              
               const formattedUser = {
                 id: userData.id,
                 name: userData.name,
@@ -334,9 +347,12 @@ const ArcPortal = () => {
               };
               
               const userRole = userData.role.toLowerCase() as 'vendor' | 'admin';
+              console.log('Logging in as:', userRole, formattedUser);
               login(formattedUser, userRole);
             } else {
-              alert('User not found. Please check your email or register as a new vendor.');
+              const errorData = await response.text();
+              console.error('Login failed. Status:', response.status, 'Error:', errorData);
+              alert(`User not found. Please check your email or register as a new vendor.\nError: ${errorData}`);
             }
           } catch (error) {
             console.error('Login error:', error);
@@ -354,6 +370,15 @@ const ArcPortal = () => {
         }));
       };
 
+      // Auto-populate sample emails when switching login types
+      const handleLoginTypeChange = (type: string) => {
+        setLoginType(type);
+        if (!isRegistering) {
+          const sampleEmail = type === 'admin' ? 'admin@arcportal.gov' : 'vendor@techcorp.com';
+          setFormData(prev => ({ ...prev, email: sampleEmail }));
+        }
+      };
+
       return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
           <Card className="w-full max-w-md">
@@ -362,7 +387,7 @@ const ArcPortal = () => {
               <CardDescription>Vendor Proposal Management System</CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={loginType} onValueChange={setLoginType} className="mb-6">
+              <Tabs value={loginType} onValueChange={handleLoginTypeChange} className="mb-6">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="vendor">Vendor</TabsTrigger>
                   <TabsTrigger value="admin">Admin</TabsTrigger>
