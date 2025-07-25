@@ -66,21 +66,31 @@ async function main() {
   await prisma.clin.createMany({
     data: [
       {
-        name: 'CLIN 0001',
+        name: '0001',
         description: 'Software Development Services',
         pricingModel: 'TM',
+        periodId: 'base_year_1',
         solicitationId: solicitation1.id,
       },
       {
-        name: 'CLIN 0002',
+        name: '0002',
         description: 'Maintenance & Support',
         pricingModel: 'FFP',
+        periodId: 'base_year_1',
         solicitationId: solicitation1.id,
       },
       {
-        name: 'CLIN 0001',
+        name: '1001',
+        description: 'Software Development Services - Option Year 1',
+        pricingModel: 'TM',
+        periodId: 'option_year_1',
+        solicitationId: solicitation1.id,
+      },
+      {
+        name: '0001',
         description: 'Security Assessment',
         pricingModel: 'FFP',
+        periodId: 'base_year_1',
         solicitationId: solicitation2.id,
       },
     ],

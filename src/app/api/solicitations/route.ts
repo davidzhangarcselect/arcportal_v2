@@ -87,10 +87,11 @@ export async function PUT(request: Request) {
       
       clinUpdateData = {
         clins: {
-          create: clins.map((clin: { name: string; description: string; pricingModel: string }) => ({
+          create: clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
             name: clin.name,
             description: clin.description,
-            pricingModel: clin.pricingModel
+            pricingModel: clin.pricingModel,
+            periodId: clin.periodId
           }))
         }
       }

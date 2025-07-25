@@ -100,6 +100,7 @@ export interface SampleClin {
   name: string;
   description: string;
   pricingModel: string;
+  periodId: string;
 }
 
 export interface SampleQuestion {

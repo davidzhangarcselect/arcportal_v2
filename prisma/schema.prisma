@@ -48,6 +48,7 @@ model Clin {
   name           String
   description    String
   pricingModel   PricingModel
+  periodId       String       // Links to evaluation period
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   solicitationId String

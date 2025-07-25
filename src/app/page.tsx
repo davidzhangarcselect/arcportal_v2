@@ -2323,16 +2323,16 @@ const ArcPortal = () => {
 
   // Price Evaluation Tool Component
   const PriceEvaluationTool = ({ solicitation }: { solicitation: SampleSolicitation }) => {
-    const [clins, setClins] = useState<any[]>([]);
     const [evaluationPeriods, setEvaluationPeriods] = useState<any[]>([
       { id: 'base_year_1', name: 'Base Year', type: 'base' }
     ]);
+    const [periodClins, setPeriodClins] = useState<{[periodId: string]: any[]}>({});
     const [pricingData, setPricingData] = useState<any>({});
     const [activeTab, setActiveTab] = useState(userType === 'admin' ? 'setup' : 'pricing');
     const [isSaving, setIsSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [originalSetup, setOriginalSetup] = useState<{clins: any[], evaluationPeriods: any[]}>({
-      clins: [],
+    const [originalSetup, setOriginalSetup] = useState<{periodClins: any, evaluationPeriods: any[]}>({
+      periodClins: {},
       evaluationPeriods: []
     });
 
@@ -2345,32 +2345,60 @@ const ArcPortal = () => {
         ];
         setEvaluationPeriods(periods);
 
-        // Load CLINs from solicitation
-        const solicitationClins = solicitation.clins.map(clin => ({
-          ...clin,
-          description: clin.description || 'Contract Line Item'
-        }));
-        setClins(solicitationClins);
+        // Organize CLINs by period
+        const clinsByPeriod: {[periodId: string]: any[]} = {};
+        
+        // Initialize empty arrays for each period
+        periods.forEach((period: any) => {
+          clinsByPeriod[period.id] = [];
+        });
+
+        // Group existing CLINs by period (if they have periodId)
+        solicitation.clins.forEach(clin => {
+          const periodId = clin.periodId || 'base_year_1'; // Default to base year if no periodId
+          if (!clinsByPeriod[periodId]) {
+            clinsByPeriod[periodId] = [];
+          }
+          clinsByPeriod[periodId].push({
+            ...clin,
+            description: clin.description || 'Contract Line Item'
+          });
+        });
+
+        // If no CLINs exist, create default ones for base period
+        if (solicitation.clins.length === 0 && periods.length > 0) {
+          const basePeriod = periods.find((p: any) => p.type === 'base');
+          if (basePeriod) {
+            clinsByPeriod[basePeriod.id] = [
+              {
+                id: `clin_${basePeriod.id}_001`,
+                name: '0001',
+                description: 'Base Contract Line Item',
+                pricingModel: 'FFP',
+                periodId: basePeriod.id
+              }
+            ];
+          }
+        }
+
+        setPeriodClins(clinsByPeriod);
 
         // Store original setup for change tracking
         setOriginalSetup({
-          clins: solicitationClins,
-          evaluationPeriods: periods
+          periodClins: JSON.parse(JSON.stringify(clinsByPeriod)),
+          evaluationPeriods: JSON.parse(JSON.stringify(periods))
         });
         setHasUnsavedChanges(false);
                 
         // Initialize pricing data for current vendor
         const initialPricing: any = {};
-        solicitationClins.forEach(clin => {
+        Object.values(clinsByPeriod).flat().forEach((clin: any) => {
           initialPricing[clin.id] = {
             basePrice: '',
             laborHours: '',
             laborRate: '',
             materialCost: '',
-            indirectRate: '',
-            optionYears: periods.filter((p: any) => p.type === 'option').map(() => ({ 
-              price: '', hours: '', rate: '' 
-            }))
+            indirectRate: ''
           };
         });
         setPricingData(initialPricing);
@@ -2380,11 +2408,11 @@ const ArcPortal = () => {
     // Track changes for unsaved changes indicator
     useEffect(() => {
       if (userType === 'admin') {
-        const hasChanges = JSON.stringify(clins) !== JSON.stringify(originalSetup.clins) ||
+        const hasChanges = JSON.stringify(periodClins) !== JSON.stringify(originalSetup.periodClins) ||
                           JSON.stringify(evaluationPeriods) !== JSON.stringify(originalSetup.evaluationPeriods);
         setHasUnsavedChanges(hasChanges);
       }
-    }, [clins, evaluationPeriods, originalSetup, userType]);
+    }, [periodClins, evaluationPeriods, originalSetup, userType]);
 
     // Save setup changes to database
     const saveSetup = async () => {
@@ -2392,6 +2420,16 @@ const ArcPortal = () => {
       
       setIsSaving(true);
       try {
+        // Flatten all CLINs from all periods for API
+        const allClins = Object.entries(periodClins).flatMap(([periodId, clins]) => 
+          clins.map(clin => ({
+            name: clin.name,
+            description: clin.description,
+            pricingModel: clin.pricingModel,
+            periodId: periodId
+          }))
+        );
+
         const response = await fetch('/api/solicitations', {
           method: 'PUT',
           headers: {
@@ -2400,11 +2438,7 @@ const ArcPortal = () => {
           body: JSON.stringify({
             id: solicitation.id,
             evaluationPeriods: evaluationPeriods,
-            clins: clins.map(clin => ({
-              name: clin.name,
-              description: clin.description,
-              pricingModel: clin.pricingModel
-            }))
+            clins: allClins
           }),
         });
 
@@ -2413,8 +2447,8 @@ const ArcPortal = () => {
           
           // Update the original setup to reflect saved state
           setOriginalSetup({
-            clins: clins,
-            evaluationPeriods: evaluationPeriods
+            periodClins: JSON.parse(JSON.stringify(periodClins)),
+            evaluationPeriods: JSON.parse(JSON.stringify(evaluationPeriods))
           });
           setHasUnsavedChanges(false);
           
@@ -2441,16 +2475,42 @@ const ArcPortal = () => {
       }
     };
 
+    // Generate CLIN number based on period and existing CLINs
+    const generateClinNumber = (periodId: string, periodType: string) => {
+      const existingClins = periodClins[periodId] || [];
+      const clinCount = existingClins.length + 1;
+      
+      if (periodType === 'base') {
+        return String(clinCount).padStart(4, '0');
+      } else {
+        // For option periods, find the period index
+        const optionPeriods = evaluationPeriods.filter(p => p.type === 'option');
+        const periodIndex = optionPeriods.findIndex(p => p.id === periodId);
+        const periodNumber = periodIndex + 1;
+        return `${periodNumber}${String(clinCount).padStart(3, '0')}`;
+      }
+    };
+
     // Admin functions for managing CLINs and evaluation periods
-    const addClin = () => {
-      const newId = `clin_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const addClinToPeriod = (periodId: string) => {
+      const period = evaluationPeriods.find(p => p.id === periodId);
+      if (!period) return;
+
+      const newId = `clin_${periodId}_${Date.now()}`;
+      const clinNumber = generateClinNumber(periodId, period.type);
+      
       const newClin = {
         id: newId,
-        name: `CLIN ${String(clins.length + 1).padStart(4, '0')}`,
+        name: clinNumber,
         description: 'New Contract Line Item',
-        pricingModel: 'FFP'
+        pricingModel: 'FFP',
+        periodId: periodId
       };
-      setClins([...clins, newClin]);
+
+      setPeriodClins(prev => ({
+        ...prev,
+        [periodId]: [...(prev[periodId] || []), newClin]
+      }));
 
       // Initialize pricing data for the new CLIN
       setPricingData((prev: any) => ({
@@ -2460,16 +2520,17 @@ const ArcPortal = () => {
           laborHours: '',
           laborRate: '',
           materialCost: '',
-          indirectRate: '',
-          optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ 
-            price: '', hours: '', rate: '' 
-          }))
+          indirectRate: ''
         }
       }));
     };
 
-    const removeClin = (clinId: string) => {
-      setClins(clins.filter(c => c.id !== clinId));
+    const removeClinFromPeriod = (periodId: string, clinId: string) => {
+      setPeriodClins(prev => ({
+        ...prev,
+        [periodId]: prev[periodId]?.filter(c => c.id !== clinId) || []
+      }));
+      
       setPricingData((prev: any) => {
         const newData = { ...prev };
         delete newData[clinId];
@@ -2477,10 +2538,13 @@ const ArcPortal = () => {
       });
     };
 
-    const updateClin = (clinId: string, field: string, value: string) => {
-      setClins(clins.map(clin => 
-        clin.id === clinId ? { ...clin, [field]: value } : clin
-      ));
+    const updateClinInPeriod = (periodId: string, clinId: string, field: string, value: string) => {
+      setPeriodClins(prev => ({
+        ...prev,
+        [periodId]: prev[periodId]?.map(clin => 
+          clin.id === clinId ? { ...clin, [field]: value } : clin
+        ) || []
+      }));
     };
 
     const addEvaluationPeriod = () => {
@@ -2491,153 +2555,83 @@ const ArcPortal = () => {
         type: 'option'
       };
       setEvaluationPeriods([...evaluationPeriods, newPeriod]);
-            
-      // Add option year data to all CLINs
-      setPricingData((prev: any) => {
-        const newData = { ...prev };
-        clins.forEach(clin => {
-          if (newData[clin.id]) {
-            newData[clin.id].optionYears.push({ price: '', hours: '', rate: '' });
-          }
-        });
-        return newData;
-      });
+      
+      // Initialize empty CLIN array for the new period
+      setPeriodClins(prev => ({
+        ...prev,
+        [newId]: []
+      }));
     };
 
     const removeEvaluationPeriod = (periodId: string) => {
-      const periodIndex = evaluationPeriods.findIndex(p => p.id === periodId);
       setEvaluationPeriods(prev => prev.filter(p => p.id !== periodId));
       
-      // Remove corresponding option year data from all CLINs
+      // Remove all CLINs for this period and their pricing data
+      const clinsToRemove = periodClins[periodId] || [];
+      setPeriodClins(prev => {
+        const newPeriodClins = { ...prev };
+        delete newPeriodClins[periodId];
+        return newPeriodClins;
+      });
+      
+      // Remove pricing data for all CLINs in this period
       setPricingData((prev: any) => {
         const newData = { ...prev };
-        clins.forEach(clin => {
-          if (newData[clin.id] && newData[clin.id].optionYears) {
-            newData[clin.id].optionYears.splice(periodIndex - 1, 1); // -1 because base year is not in optionYears
-          }
+        clinsToRemove.forEach(clin => {
+          delete newData[clin.id];
         });
         return newData;
       });
     };
 
     // Real-time pricing calculations
-    const updatePricingData = (clinId: string, field: string, value: string, yearIndex: number | null = null) => {
-      setPricingData((prev: any) => {
-        const newData = { ...prev };
-        if (!newData[clinId]) {
-          newData[clinId] = {
-            basePrice: '',
-            laborHours: '',
-            laborRate: '',
-            materialCost: '',
-            indirectRate: '',
-            optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ 
-              price: '', hours: '', rate: '' 
-            }))
-          };
+    const updatePricingData = (clinId: string, field: string, value: string) => {
+      setPricingData((prev: any) => ({
+        ...prev,
+        [clinId]: {
+          ...prev[clinId],
+          [field]: value
         }
-        
-        if (yearIndex !== null) {
-          if (!newData[clinId].optionYears[yearIndex]) {
-            newData[clinId].optionYears[yearIndex] = { price: '', hours: '', rate: '' };
-          }
-          newData[clinId].optionYears[yearIndex][field] = value;
-        } else {
-          newData[clinId][field] = value;
-        }
-        
-        return newData;
-      });
+      }));
     };
 
     const calculateClinTotal = (clinId: string) => {
       const data = pricingData[clinId];
       if (!data) return 0;
             
-      const clin = clins.find(c => c.id === clinId);
+      // Find the CLIN in any period
+      let clin: any = null;
+      for (const periodClinsArray of Object.values(periodClins)) {
+        clin = periodClinsArray.find((c: any) => c.id === clinId);
+        if (clin) break;
+      }
+      
       if (!clin) return 0;
             
-      let baseTotal = 0;
-      let optionTotal = 0;
-            
-      // Calculate base year total
+      // Calculate total based on pricing model
       switch (clin.pricingModel) {
         case 'FFP':
-          baseTotal = parseFloat(data.basePrice) || 0;
-          break;
+          return parseFloat(data.basePrice) || 0;
         case 'T&M':
-          baseTotal = (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0);
-          break;
+          return (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0);
         case 'CR':
           const directCost = (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0) + (parseFloat(data.materialCost) || 0);
-          baseTotal = directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100);
-          break;
+          return directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100);
+        default:
+          return 0;
       }
-            
-      // Calculate option years total
-      const optionPeriods = evaluationPeriods.filter(p => p.type === 'option');
-      data.optionYears?.forEach((yearData: any, index: number) => {
-        if (index < optionPeriods.length) {
-          let yearTotal = 0;
-                    
-          switch (clin.pricingModel) {
-            case 'FFP':
-              yearTotal = parseFloat(yearData.price) || 0;
-              break;
-            case 'T&M':
-              yearTotal = (parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0);
-              break;
-            case 'CR':
-              const directCost = (parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0) + (parseFloat(data.materialCost) || 0);
-              yearTotal = directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100);
-              break;
-          }
-                    
-          optionTotal += yearTotal;
-        }
-      });
-            
-      return baseTotal + optionTotal;
     };
 
-    const calculateGrandTotal = () => {
-      return clins.reduce((total, clin) => {
+    const calculatePeriodTotal = (periodId: string) => {
+      const clinsInPeriod = periodClins[periodId] || [];
+      return clinsInPeriod.reduce((total, clin) => {
         return total + calculateClinTotal(clin.id);
       }, 0);
     };
 
-    const calculatePeriodTotal = (periodIndex: number) => {
-      return clins.reduce((total, clin) => {
-        const data = pricingData[clin.id];
-        if (!data) return total;
-        
-        if (periodIndex === 0) {
-          // Base year
-          switch (clin.pricingModel) {
-            case 'FFP':
-              return total + (parseFloat(data.basePrice) || 0);
-            case 'T&M':
-              return total + ((parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0));
-            case 'CR':
-              const directCost = (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0) + (parseFloat(data.materialCost) || 0);
-              return total + (directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100));
-          }
-        } else {
-          // Option year
-          const yearData = data.optionYears?.[periodIndex - 1];
-          if (!yearData) return total;
-          
-          switch (clin.pricingModel) {
-            case 'FFP':
-              return total + (parseFloat(yearData.price) || 0);
-            case 'T&M':
-              return total + ((parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0));
-            case 'CR':
-              const directCost = (parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0) + (parseFloat(data.materialCost) || 0);
-              return total + (directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100));
-          }
-        }
-        return total;
+    const calculateGrandTotal = () => {
+      return Object.values(periodClins).flat().reduce((total: number, clin: any) => {
+        return total + calculateClinTotal(clin.id);
       }, 0);
     };
 
@@ -2733,74 +2727,89 @@ const ArcPortal = () => {
                   </CardContent>
                 </Card>
 
-                {/* CLINs Management */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle>Contract Line Items (CLINs)</CardTitle>
-                        <CardDescription>Manage CLINs for solicitation {solicitation.number}</CardDescription>
-                      </div>
-                      <Button onClick={addClin} className="bg-green-600 hover:bg-green-700">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add CLIN
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {clins.map(clin => (
-                      <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
-                        <div className="w-32">
-                          <Input
-                            value={clin.name}
-                            onChange={(e) => updateClin(clin.id, 'name', e.target.value)}
-                            placeholder="CLIN Name"
-                            className="font-medium"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <Input
-                            value={clin.description}
-                            onChange={(e) => updateClin(clin.id, 'description', e.target.value)}
-                            placeholder="CLIN Description"
-                            className="text-gray-700"
-                          />
-                        </div>
-                        <div className="w-48">
-                          <Select
-                            value={clin.pricingModel}
-                            onValueChange={(value) => updateClin(clin.id, 'pricingModel', value)}
+                {/* CLINs Management by Period */}
+                <div className="space-y-6">
+                  {evaluationPeriods.map(period => (
+                    <Card key={period.id}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Calendar className="h-5 w-5" />
+                              {period.name} - CLINs
+                            </CardTitle>
+                            <CardDescription>
+                              Contract Line Items for {period.name}
+                              {period.type === 'base' && ' (0001, 0002, 0003...)'}
+                              {period.type === 'option' && ` (${evaluationPeriods.filter(p => p.type === 'option').findIndex(p => p.id === period.id) + 1}001, ${evaluationPeriods.filter(p => p.type === 'option').findIndex(p => p.id === period.id) + 1}002...)`}
+                            </CardDescription>
+                          </div>
+                          <Button 
+                            onClick={() => addClinToPeriod(period.id)} 
+                            className="bg-green-600 hover:bg-green-700"
+                            size="sm"
                           >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="FFP">Firm Fixed Price</SelectItem>
-                              <SelectItem value="T&M">Time & Materials</SelectItem>
-                              <SelectItem value="CR">Cost Reimbursable</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add CLIN
+                          </Button>
                         </div>
-                        {getPricingModelBadge(clin.pricingModel)}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeClin(clin.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          disabled={clins.length <= 1}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    
-                    {clins.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No CLINs defined. Click "Add CLIN" to create your first contract line item.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {(periodClins[period.id] || []).map(clin => (
+                          <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
+                            <div className="w-20">
+                              <Input
+                                value={clin.name}
+                                onChange={(e) => updateClinInPeriod(period.id, clin.id, 'name', e.target.value)}
+                                placeholder="CLIN"
+                                className="font-medium text-center"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Input
+                                value={clin.description}
+                                onChange={(e) => updateClinInPeriod(period.id, clin.id, 'description', e.target.value)}
+                                placeholder="CLIN Description"
+                                className="text-gray-700"
+                              />
+                            </div>
+                            <div className="w-48">
+                              <Select
+                                value={clin.pricingModel}
+                                onValueChange={(value) => updateClinInPeriod(period.id, clin.id, 'pricingModel', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="FFP">Firm Fixed Price</SelectItem>
+                                  <SelectItem value="T&M">Time & Materials</SelectItem>
+                                  <SelectItem value="CR">Cost Reimbursable</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {getPricingModelBadge(clin.pricingModel)}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeClinFromPeriod(period.id, clin.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        
+                        {(!periodClins[period.id] || periodClins[period.id].length === 0) && (
+                          <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                            <p>No CLINs defined for {period.name}</p>
+                            <p className="text-sm">Click "Add CLIN" to create contract line items</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
                 {/* Save Button */}
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
@@ -2852,7 +2861,7 @@ const ArcPortal = () => {
                 </Alert>
               )}
 
-              {clins.map(clin => (
+              {Object.values(periodClins).flat().map(clin => (
                 <Card key={clin.id}>
                   <CardHeader>
                     <div className="flex items-center gap-3 pb-2">
@@ -2884,120 +2893,68 @@ const ArcPortal = () => {
                           </div>
                         )}
                         
-                        {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
-                          <>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Labor Hours</Label>
-                              <Input
-                                type="number"
-                                value={pricingData[clin.id]?.laborHours || ''}
-                                onChange={(e) => updatePricingData(clin.id, 'laborHours', e.target.value)}
-                                placeholder="0"
-                                disabled={userType === 'admin'}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Labor Rate</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={pricingData[clin.id]?.laborRate || ''}
-                                onChange={(e) => updatePricingData(clin.id, 'laborRate', e.target.value)}
-                                placeholder="$0.00"
-                                disabled={userType === 'admin'}
-                              />
-                            </div>
-                          </>
-                        )}
-                        
-                        {clin.pricingModel === 'CR' && (
-                          <>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Material Cost</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={pricingData[clin.id]?.materialCost || ''}
-                                onChange={(e) => updatePricingData(clin.id, 'materialCost', e.target.value)}
-                                placeholder="$0.00"
-                                disabled={userType === 'admin'}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Indirect Rate (%)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={pricingData[clin.id]?.indirectRate || ''}
-                                onChange={(e) => updatePricingData(clin.id, 'indirectRate', e.target.value)}
-                                placeholder="0.00"
-                                disabled={userType === 'admin'}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Option Years */}
-                    {evaluationPeriods.filter(p => p.type === 'option').map((period, yearIndex) => (
-                      <div key={period.id} className="space-y-3">
-                        <h5 className="font-medium text-sm text-gray-700">
-                          <Calendar className="h-4 w-4 inline mr-2" />
-                          {period.name}
-                        </h5>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {clin.pricingModel === 'FFP' && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Total Price</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={pricingData[clin.id]?.optionYears?.[yearIndex]?.price || ''}
-                                onChange={(e) => updatePricingData(clin.id, 'price', e.target.value, yearIndex)}
-                                placeholder="$0.00"
-                                disabled={userType === 'admin'}
-                              />
-                            </div>
-                          )}
-                          
-                          {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
-                            <>
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Labor Hours</Label>
-                                <Input
-                                  type="number"
-                                  value={pricingData[clin.id]?.optionYears?.[yearIndex]?.hours || ''}
-                                  onChange={(e) => updatePricingData(clin.id, 'hours', e.target.value, yearIndex)}
-                                  placeholder="0"
-                                  disabled={userType === 'admin'}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-sm font-medium">Labor Rate</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={pricingData[clin.id]?.optionYears?.[yearIndex]?.rate || ''}
-                                  onChange={(e) => updatePricingData(clin.id, 'rate', e.target.value, yearIndex)}
-                                  placeholder="$0.00"
-                                  disabled={userType === 'admin'}
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Real-time CLIN Total */}
-                    <Alert>
-                      <Calculator className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>CLIN Total: ${calculateClinTotal(clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                      </AlertDescription>
-                    </Alert>
-                  </CardContent>
+                         {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
+                           <>
+                             <div className="space-y-2">
+                               <Label className="text-sm font-medium">Labor Hours</Label>
+                               <Input
+                                 type="number"
+                                 value={pricingData[clin.id]?.laborHours || ''}
+                                 onChange={(e) => updatePricingData(clin.id, 'laborHours', e.target.value)}
+                                 placeholder="0"
+                                 disabled={userType === 'admin'}
+                               />
+                             </div>
+                             <div className="space-y-2">
+                               <Label className="text-sm font-medium">Labor Rate</Label>
+                               <Input
+                                 type="number"
+                                 step="0.01"
+                                 value={pricingData[clin.id]?.laborRate || ''}
+                                 onChange={(e) => updatePricingData(clin.id, 'laborRate', e.target.value)}
+                                 placeholder="$0.00"
+                                 disabled={userType === 'admin'}
+                               />
+                             </div>
+                           </>
+                         )}
+                         
+                         {clin.pricingModel === 'CR' && (
+                           <>
+                             <div className="space-y-2">
+                               <Label className="text-sm font-medium">Material Cost</Label>
+                               <Input
+                                 type="number"
+                                 step="0.01"
+                                 value={pricingData[clin.id]?.materialCost || ''}
+                                 onChange={(e) => updatePricingData(clin.id, 'materialCost', e.target.value)}
+                                 placeholder="$0.00"
+                                 disabled={userType === 'admin'}
+                               />
+                             </div>
+                             <div className="space-y-2">
+                               <Label className="text-sm font-medium">Indirect Rate (%)</Label>
+                               <Input
+                                 type="number"
+                                 step="0.01"
+                                 value={pricingData[clin.id]?.indirectRate || ''}
+                                 onChange={(e) => updatePricingData(clin.id, 'indirectRate', e.target.value)}
+                                 placeholder="0.00"
+                                 disabled={userType === 'admin'}
+                               />
+                             </div>
+                           </>
+                         )}
+                       </div>
+                     </div>
+                     
+                     {/* Real-time CLIN Total */}
+                     <Alert>
+                       <Calculator className="h-4 w-4" />
+                       <AlertDescription>
+                         <strong>CLIN Total: ${calculateClinTotal(clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                       </AlertDescription>
+                     </Alert>                  </CardContent>
                 </Card>
               ))}
               
