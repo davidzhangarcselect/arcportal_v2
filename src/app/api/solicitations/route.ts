@@ -20,30 +20,6 @@ export async function GET() {
 
 
 
-    // Logging to see current state when data is loaded
-    const rfp002 = solicitations.find(s => s.number === 'RFP-2025-002');
-    if (rfp002) {
-      const periods = JSON.parse((rfp002 as any).evaluationPeriods || '[]');
-      const clinsByPeriod: any = {};
-      rfp002.clins.forEach((clin: any) => {
-        if (!clinsByPeriod[clin.periodId]) {
-          clinsByPeriod[clin.periodId] = [];
-        }
-        clinsByPeriod[clin.periodId].push({
-          name: clin.name,
-          description: clin.description,
-          pricingModel: clin.pricingModel
-        });
-      });
-      
-      console.log('📖 LOAD OPERATION - RFP-2025-002 Current Database State:');
-      periods.forEach((period: any) => {
-        const clins = clinsByPeriod[period.id] || [];
-        console.log(`  ${period.name}: ${clins.length} CLINs [${clins.map((c: any) => c.name).join(', ')}]`);
-      });
-      console.log(`📊 Total CLINs in database: ${rfp002.clins.length}`);
-    }
-
     return NextResponse.json(solicitations)
   } catch (error) {
     console.error('Error fetching solicitations:', error)
@@ -106,14 +82,10 @@ export async function PUT(request: Request) {
     // Handle CLINs update if provided
     let clinUpdateData = {}
     if (clins) {
-      console.log('🔄 SAVE OPERATION - Updating CLINs for solicitation:', id);
-      console.log('📝 New CLINs to save:', clins.map((c: any) => `${c.name} (${c.periodId})`).join(', '));
-      
       // Delete existing CLINs and create new ones
-      const deleteResult = await prisma.clin.deleteMany({
+      await prisma.clin.deleteMany({
         where: { solicitationId: id }
       })
-      console.log('🗑️ Deleted', deleteResult.count, 'existing CLINs');
       
       clinUpdateData = {
         clins: {
@@ -125,7 +97,6 @@ export async function PUT(request: Request) {
           }))
         }
       }
-      console.log('✅ Creating', clins.length, 'new CLINs');
     }
 
     // Build update data object with only provided fields

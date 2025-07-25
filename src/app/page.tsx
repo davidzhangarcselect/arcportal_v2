@@ -2340,9 +2340,11 @@ const ArcPortal = () => {
     useEffect(() => {
       if (solicitation && currentUser) {
         // Load evaluation periods from solicitation or use defaults
-        const periods = solicitation.evaluationPeriods || [
-          { id: 'base_year_1', name: 'Base Year', type: 'base' }
-        ];
+        const periods = solicitation.evaluationPeriods 
+          ? (typeof solicitation.evaluationPeriods === 'string' 
+              ? JSON.parse(solicitation.evaluationPeriods) 
+              : solicitation.evaluationPeriods)
+          : [{ id: 'base_year_1', name: 'Base Year', type: 'base' }];
         setEvaluationPeriods(periods);
 
         // Organize CLINs by period
