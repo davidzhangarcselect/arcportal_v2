@@ -108,18 +108,20 @@ const ArcPortal = () => {
         const solicitationsResponse = await fetch('/api/solicitations');
         if (solicitationsResponse.ok) {
           const solicitationsData = await solicitationsResponse.json();
-          setSolicitations(solicitationsData.map((s: any) => ({
-            ...s,
-            dueDate: new Date(s.dueDate).toISOString().split('T')[0],
-            questionCutoffDate: s.questionCutoffDate ? new Date(s.questionCutoffDate).toISOString().slice(0, 16) : undefined,
-            proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
-            status: s.status.toLowerCase(),
-            attachments: [
-              { name: 'Statement of Work.pdf', size: '2.3 MB' },
-              { name: 'Technical Requirements.docx', size: '1.1 MB' }
-            ]
-          })));
-        }
+           setSolicitations(solicitationsData.map((s: any) => ({
+             ...s,
+             dueDate: new Date(s.dueDate).toISOString().split('T')[0],
+             questionCutoffDate: s.questionCutoffDate ? new Date(s.questionCutoffDate).toISOString().slice(0, 16) : undefined,
+             proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
+             status: s.status.toLowerCase(),
+             evaluationPeriods: s.evaluationPeriods ? JSON.parse(s.evaluationPeriods) : [
+               { id: 'base_year_1', name: 'Base Year', type: 'base' }
+             ],
+             attachments: [
+               { name: 'Statement of Work.pdf', size: '2.3 MB' },
+               { name: 'Technical Requirements.docx', size: '1.1 MB' }
+             ]
+           })));        }
 
         // Load questions
         const questionsResponse = await fetch('/api/questions');
@@ -2321,49 +2323,48 @@ const ArcPortal = () => {
 
   // Price Evaluation Tool Component
   const PriceEvaluationTool = ({ solicitation }: { solicitation: SampleSolicitation }) => {
-    const [offerors, setOfferors] = useState<any[]>([]);
     const [clins, setClins] = useState<any[]>([]);
-    const [evaluationPeriods, setEvaluationPeriods] = useState([
+    const [evaluationPeriods, setEvaluationPeriods] = useState<any[]>([
       { id: 'base_year_1', name: 'Base Year', type: 'base' }
     ]);
-    const [evaluationResults, setEvaluationResults] = useState<any>({});
     const [pricingData, setPricingData] = useState<any>({});
-    const [activeTab, setActiveTab] = useState('setup');
+    const [activeTab, setActiveTab] = useState(userType === 'admin' ? 'setup' : 'pricing');
 
-    // Initialize with solicitation data and current vendor
+    // Initialize with solicitation data
     useEffect(() => {
       if (solicitation && currentUser) {
+        // Load evaluation periods from solicitation or use defaults
+        const periods = solicitation.evaluationPeriods || [
+          { id: 'base_year_1', name: 'Base Year', type: 'base' }
+        ];
+        setEvaluationPeriods(periods);
+
+        // Load CLINs from solicitation
         const solicitationClins = solicitation.clins.map(clin => ({
           ...clin,
           description: clin.description || 'Contract Line Item'
         }));
-                
-        const initialOfferors = [
-          { id: 1, name: currentUser.companyName || 'My Company', isIncumbent: false }
-        ];
-                
         setClins(solicitationClins);
-        setOfferors(initialOfferors);
                 
+        // Initialize pricing data for current vendor
         const initialPricing: any = {};
-        initialOfferors.forEach(offeror => {
-          initialPricing[offeror.id] = {};
-          solicitationClins.forEach(clin => {
-            initialPricing[offeror.id][clin.id] = {
-              basePrice: '',
-              laborHours: '',
-              laborRate: '',
-              materialCost: '',
-              indirectRate: '',
-              optionYears: [{ price: '', hours: '', rate: '' }]
-            };
-          });
+        solicitationClins.forEach(clin => {
+          initialPricing[clin.id] = {
+            basePrice: '',
+            laborHours: '',
+            laborRate: '',
+            materialCost: '',
+            indirectRate: '',
+            optionYears: periods.filter((p: any) => p.type === 'option').map(() => ({ 
+              price: '', hours: '', rate: '' 
+            }))
+          };
         });
-                
         setPricingData(initialPricing);
       }
     }, [solicitation, currentUser]);
 
+    // Admin functions for managing CLINs and evaluation periods
     const addClin = () => {
       const newId = `clin_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const newClin = {
@@ -2375,35 +2376,31 @@ const ArcPortal = () => {
       setClins([...clins, newClin]);
 
       // Initialize pricing data for the new CLIN
-      const newPricing = { ...pricingData };
-      offerors.forEach(offeror => {
-        if (!newPricing[offeror.id]) newPricing[offeror.id] = {};
-        newPricing[offeror.id][newId] = {
+      setPricingData((prev: any) => ({
+        ...prev,
+        [newId]: {
           basePrice: '',
           laborHours: '',
           laborRate: '',
           materialCost: '',
           indirectRate: '',
-          optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ price: '', hours: '', rate: '' }))
-        };
-      });
-      setPricingData(newPricing);
-    };
-
-    const removeClin = (clinId: number) => {
-      setClins(clins.filter(c => c.id !== clinId));
-      
-      // Remove pricing data for the deleted CLIN
-      const newPricing = { ...pricingData };
-      offerors.forEach(offeror => {
-        if (newPricing[offeror.id]) {
-          delete newPricing[offeror.id][clinId];
+          optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ 
+            price: '', hours: '', rate: '' 
+          }))
         }
-      });
-      setPricingData(newPricing);
+      }));
     };
 
-    const updateClin = (clinId: number, field: string, value: string) => {
+    const removeClin = (clinId: string) => {
+      setClins(clins.filter(c => c.id !== clinId));
+      setPricingData((prev: any) => {
+        const newData = { ...prev };
+        delete newData[clinId];
+        return newData;
+      });
+    };
+
+    const updateClin = (clinId: string, field: string, value: string) => {
       setClins(clins.map(clin => 
         clin.id === clinId ? { ...clin, [field]: value } : clin
       ));
@@ -2418,45 +2415,66 @@ const ArcPortal = () => {
       };
       setEvaluationPeriods([...evaluationPeriods, newPeriod]);
             
-      const newPricing = { ...pricingData };
-      offerors.forEach(offeror => {
+      // Add option year data to all CLINs
+      setPricingData((prev: any) => {
+        const newData = { ...prev };
         clins.forEach(clin => {
-          if (newPricing[offeror.id] && newPricing[offeror.id][clin.id]) {
-            newPricing[offeror.id][clin.id].optionYears.push({ price: '', hours: '', rate: '' });
+          if (newData[clin.id]) {
+            newData[clin.id].optionYears.push({ price: '', hours: '', rate: '' });
           }
         });
+        return newData;
       });
-      setPricingData(newPricing);
     };
 
-    const updatePricingData = (offerorId: number, clinId: number, field: string, value: string, yearIndex: number | null = null) => {
-      const newPricing = { ...pricingData };
-      if (!newPricing[offerorId]) newPricing[offerorId] = {};
-      if (!newPricing[offerorId][clinId]) {
-        newPricing[offerorId][clinId] = {
-          basePrice: '',
-          laborHours: '',
-          laborRate: '',
-          materialCost: '',
-          indirectRate: '',
-          optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ price: '', hours: '', rate: '' }))
-        };
-      }
-            
-      if (yearIndex !== null) {
-        if (!newPricing[offerorId][clinId].optionYears[yearIndex]) {
-          newPricing[offerorId][clinId].optionYears[yearIndex] = { price: '', hours: '', rate: '' };
+    const removeEvaluationPeriod = (periodId: string) => {
+      const periodIndex = evaluationPeriods.findIndex(p => p.id === periodId);
+      setEvaluationPeriods(prev => prev.filter(p => p.id !== periodId));
+      
+      // Remove corresponding option year data from all CLINs
+      setPricingData((prev: any) => {
+        const newData = { ...prev };
+        clins.forEach(clin => {
+          if (newData[clin.id] && newData[clin.id].optionYears) {
+            newData[clin.id].optionYears.splice(periodIndex - 1, 1); // -1 because base year is not in optionYears
+          }
+        });
+        return newData;
+      });
+    };
+
+    // Real-time pricing calculations
+    const updatePricingData = (clinId: string, field: string, value: string, yearIndex: number | null = null) => {
+      setPricingData((prev: any) => {
+        const newData = { ...prev };
+        if (!newData[clinId]) {
+          newData[clinId] = {
+            basePrice: '',
+            laborHours: '',
+            laborRate: '',
+            materialCost: '',
+            indirectRate: '',
+            optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ 
+              price: '', hours: '', rate: '' 
+            }))
+          };
         }
-        newPricing[offerorId][clinId].optionYears[yearIndex][field] = value;
-      } else {
-        newPricing[offerorId][clinId][field] = value;
-      }
-            
-      setPricingData(newPricing);
+        
+        if (yearIndex !== null) {
+          if (!newData[clinId].optionYears[yearIndex]) {
+            newData[clinId].optionYears[yearIndex] = { price: '', hours: '', rate: '' };
+          }
+          newData[clinId].optionYears[yearIndex][field] = value;
+        } else {
+          newData[clinId][field] = value;
+        }
+        
+        return newData;
+      });
     };
 
-    const calculateClinTotal = (offerorId: number, clinId: number) => {
-      const data = pricingData[offerorId]?.[clinId];
+    const calculateClinTotal = (clinId: string) => {
+      const data = pricingData[clinId];
       if (!data) return 0;
             
       const clin = clins.find(c => c.id === clinId);
@@ -2465,6 +2483,7 @@ const ArcPortal = () => {
       let baseTotal = 0;
       let optionTotal = 0;
             
+      // Calculate base year total
       switch (clin.pricingModel) {
         case 'FFP':
           baseTotal = parseFloat(data.basePrice) || 0;
@@ -2478,6 +2497,7 @@ const ArcPortal = () => {
           break;
       }
             
+      // Calculate option years total
       const optionPeriods = evaluationPeriods.filter(p => p.type === 'option');
       data.optionYears?.forEach((yearData: any, index: number) => {
         if (index < optionPeriods.length) {
@@ -2503,32 +2523,45 @@ const ArcPortal = () => {
       return baseTotal + optionTotal;
     };
 
-    const calculateOfferorTotal = (offerorId: number) => {
+    const calculateGrandTotal = () => {
       return clins.reduce((total, clin) => {
-        return total + calculateClinTotal(offerorId, clin.id);
+        return total + calculateClinTotal(clin.id);
       }, 0);
     };
 
-    const performEvaluation = () => {
-      const results: any = {};
-      const mainOfferor = offerors[0];
-            
-      if (mainOfferor) {
-        const total = calculateOfferorTotal(mainOfferor.id);
-        results[mainOfferor.id] = {
-          total,
-          clinBreakdown: {},
-          rank: 1,
-          percentAboveLow: 0
-        };
-                
-        clins.forEach(clin => {
-          results[mainOfferor.id].clinBreakdown[clin.id] = calculateClinTotal(mainOfferor.id, clin.id);
-        });
-      }
-            
-      setEvaluationResults(results);
-      setActiveTab('results');
+    const calculatePeriodTotal = (periodIndex: number) => {
+      return clins.reduce((total, clin) => {
+        const data = pricingData[clin.id];
+        if (!data) return total;
+        
+        if (periodIndex === 0) {
+          // Base year
+          switch (clin.pricingModel) {
+            case 'FFP':
+              return total + (parseFloat(data.basePrice) || 0);
+            case 'T&M':
+              return total + ((parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0));
+            case 'CR':
+              const directCost = (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0) + (parseFloat(data.materialCost) || 0);
+              return total + (directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100));
+          }
+        } else {
+          // Option year
+          const yearData = data.optionYears?.[periodIndex - 1];
+          if (!yearData) return total;
+          
+          switch (clin.pricingModel) {
+            case 'FFP':
+              return total + (parseFloat(yearData.price) || 0);
+            case 'T&M':
+              return total + ((parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0));
+            case 'CR':
+              const directCost = (parseFloat(yearData.hours) || 0) * (parseFloat(yearData.rate) || 0) + (parseFloat(data.materialCost) || 0);
+              return total + (directCost * (1 + (parseFloat(data.indirectRate) || 0) / 100));
+          }
+        }
+        return total;
+      }, 0);
     };
 
     const getPricingModelBadge = (model: string) => {
@@ -2546,389 +2579,434 @@ const ArcPortal = () => {
           <div>
             <h3 className="text-xl font-bold text-gray-900">
               <Calculator className="h-5 w-5 inline mr-2" />
-              Price Evaluation Tool
+              {userType === 'admin' ? 'Pricing Configuration' : 'Pricing Tool'}
             </h3>
-            <p className="text-gray-600">Cost analysis for {solicitation.number}</p>
-          </div>
-                    
-          <div className="flex gap-3">
-            <Button onClick={performEvaluation} className="bg-blue-600 hover:bg-blue-700">
-              <Calculator className="h-4 w-4 mr-2" />
-              Calculate Results
-            </Button>
+            <p className="text-gray-600">
+              {userType === 'admin' 
+                ? `Configure evaluation periods and CLINs for ${solicitation.number}`
+                : `Enter your pricing for ${solicitation.number}`
+              }
+            </p>
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="setup">Setup</TabsTrigger>
-            <TabsTrigger value="clins">CLINs</TabsTrigger>
+          <TabsList className={`grid w-full ${userType === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {userType === 'admin' && <TabsTrigger value="setup">Setup</TabsTrigger>}
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            <TabsTrigger value="results">Results</TabsTrigger>
+            <TabsTrigger value="summary">Pricing Summary</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="setup" className="space-y-6">
-            <div className="grid md:grid-cols-1 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    <Calendar className="h-5 w-5 inline mr-2" />
-                    Evaluation Periods
-                  </CardTitle>
-                  <CardDescription>
-                    Configure base year and option periods for your proposal
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {evaluationPeriods.map(period => (
-                    <div key={period.id} className="flex items-center gap-3 p-3 border rounded-lg bg-white">
-                      <Input
-                        value={period.name}
-                        onChange={(e) => setEvaluationPeriods(prev =>
-                          prev.map(p => p.id === period.id ? { ...p, name: e.target.value } : p)
+          {userType === 'admin' && (
+            <TabsContent value="setup" className="space-y-6">
+              <div className="grid gap-6">
+                {/* Evaluation Periods */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      <Calendar className="h-5 w-5 inline mr-2" />
+                      Evaluation Periods
+                    </CardTitle>
+                    <CardDescription>
+                      Configure base year and option periods for this solicitation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {evaluationPeriods.map(period => (
+                      <div key={period.id} className="flex items-center gap-3 p-3 border rounded-lg bg-white">
+                        <Input
+                          value={period.name}
+                          onChange={(e) => setEvaluationPeriods(prev =>
+                            prev.map(p => p.id === period.id ? { ...p, name: e.target.value } : p)
+                          )}
+                          placeholder="Period Name"
+                          className="flex-1"
+                        />
+                        <Select
+                          value={period.type}
+                          onValueChange={(value) => setEvaluationPeriods(prev =>
+                            prev.map(p => p.id === period.id ? { ...p, type: value } : p)
+                          )}
+                          disabled={period.type === 'base'}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="base">Base Year</SelectItem>
+                            <SelectItem value="option">Option Year</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {period.type === 'option' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeEvaluationPeriod(period.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
-                        placeholder="Period Name"
-                        className="flex-1"
-                      />
-                      <Select
-                        value={period.type}
-                        onValueChange={(value) => setEvaluationPeriods(prev =>
-                          prev.map(p => p.id === period.id ? { ...p, type: value } : p)
-                        )}
-                        disabled={period.type === 'base'}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="base">Base Year</SelectItem>
-                          <SelectItem value="option">Option Year</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {period.type === 'option' && (
+                      </div>
+                    ))}
+                    <Button onClick={addEvaluationPeriod} variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Option Year
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* CLINs Management */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Contract Line Items (CLINs)</CardTitle>
+                        <CardDescription>Manage CLINs for solicitation {solicitation.number}</CardDescription>
+                      </div>
+                      <Button onClick={addClin} className="bg-green-600 hover:bg-green-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add CLIN
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {clins.map(clin => (
+                      <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
+                        <div className="w-32">
+                          <Input
+                            value={clin.name}
+                            onChange={(e) => updateClin(clin.id, 'name', e.target.value)}
+                            placeholder="CLIN Name"
+                            className="font-medium"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            value={clin.description}
+                            onChange={(e) => updateClin(clin.id, 'description', e.target.value)}
+                            placeholder="CLIN Description"
+                            className="text-gray-700"
+                          />
+                        </div>
+                        <div className="w-48">
+                          <Select
+                            value={clin.pricingModel}
+                            onValueChange={(value) => updateClin(clin.id, 'pricingModel', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="FFP">Firm Fixed Price</SelectItem>
+                              <SelectItem value="T&M">Time & Materials</SelectItem>
+                              <SelectItem value="CR">Cost Reimbursable</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {getPricingModelBadge(clin.pricingModel)}
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => setEvaluationPeriods(prev => prev.filter(p => p.id !== period.id))}
-                          className="text-red-600 hover:text-red-800"
+                          onClick={() => removeClin(clin.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          disabled={clins.length <= 1}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button onClick={addEvaluationPeriod} variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Option Year
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="clins">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Contract Line Items (CLINs)</CardTitle>
-                    <CardDescription>Manage CLINs for solicitation {solicitation.number}</CardDescription>
-                  </div>
-                  <Button onClick={addClin} className="bg-green-600 hover:bg-green-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add CLIN
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {clins.map(clin => (
-                  <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
-                    <div className="w-32">
-                      <Input
-                        value={clin.name}
-                        onChange={(e) => updateClin(clin.id, 'name', e.target.value)}
-                        placeholder="CLIN Name"
-                        className="font-medium"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <Input
-                        value={clin.description}
-                        onChange={(e) => updateClin(clin.id, 'description', e.target.value)}
-                        placeholder="CLIN Description"
-                        className="text-gray-700"
-                      />
-                    </div>
-                    <div className="w-48">
-                      <Select
-                        value={clin.pricingModel}
-                        onValueChange={(value) => updateClin(clin.id, 'pricingModel', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="FFP">Firm Fixed Price</SelectItem>
-                          <SelectItem value="T&M">Time & Materials</SelectItem>
-                          <SelectItem value="CR">Cost Reimbursable</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {getPricingModelBadge(clin.pricingModel)}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeClin(clin.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      disabled={clins.length <= 1}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                
-                {clins.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No CLINs defined. Click "Add CLIN" to create your first contract line item.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </div>
+                    ))}
+                    
+                    {clins.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No CLINs defined. Click "Add CLIN" to create your first contract line item.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
 
           <TabsContent value="pricing">
             <div className="space-y-6">
-              {offerors.map(offeror => (
-                <Card key={offeror.id}>
+              {userType === 'vendor' && (
+                <Alert>
+                  <Building2 className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Vendor Pricing for {currentUser?.companyName || 'Your Company'}</strong>
+                    <br />Enter your pricing data for all contract line items. Calculations update automatically.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {clins.map(clin => (
+                <Card key={clin.id}>
                   <CardHeader>
-                    <CardTitle>
-                      <Building2 className="h-5 w-5 inline mr-2" />
-                      {offeror.name}
-                    </CardTitle>
-                    <CardDescription>
-                      Enter pricing data for all contract line items
-                    </CardDescription>
+                    <div className="flex items-center gap-3 pb-2">
+                      <h4 className="font-medium text-lg">{clin.name}</h4>
+                      <span className="text-gray-600">-</span>
+                      <span className="text-gray-700">{clin.description}</span>
+                      {getPricingModelBadge(clin.pricingModel)}
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {clins.map(clin => (
-                      <div key={clin.id} className="space-y-4">
-                        <div className="flex items-center gap-3 pb-2 border-b">
-                          <h4 className="font-medium text-lg">{clin.name}</h4>
-                          <span className="text-gray-600">-</span>
-                          <span className="text-gray-700">{clin.description}</span>
-                          {getPricingModelBadge(clin.pricingModel)}
-                        </div>
-                                                
-                        <div className="space-y-3">
-                          <h5 className="font-medium text-sm text-gray-700 flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            Base Year
-                          </h5>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {clin.pricingModel === 'FFP' && (
+                    {/* Base Year */}
+                    <div className="space-y-3">
+                      <h5 className="font-medium text-sm text-gray-700 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Base Year
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {clin.pricingModel === 'FFP' && (
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Total Price</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={pricingData[clin.id]?.basePrice || ''}
+                              onChange={(e) => updatePricingData(clin.id, 'basePrice', e.target.value)}
+                              placeholder="$0.00"
+                              disabled={userType === 'admin'}
+                            />
+                          </div>
+                        )}
+                        
+                        {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
+                          <>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Labor Hours</Label>
+                              <Input
+                                type="number"
+                                value={pricingData[clin.id]?.laborHours || ''}
+                                onChange={(e) => updatePricingData(clin.id, 'laborHours', e.target.value)}
+                                placeholder="0"
+                                disabled={userType === 'admin'}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Labor Rate</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricingData[clin.id]?.laborRate || ''}
+                                onChange={(e) => updatePricingData(clin.id, 'laborRate', e.target.value)}
+                                placeholder="$0.00"
+                                disabled={userType === 'admin'}
+                              />
+                            </div>
+                          </>
+                        )}
+                        
+                        {clin.pricingModel === 'CR' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Material Cost</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricingData[clin.id]?.materialCost || ''}
+                                onChange={(e) => updatePricingData(clin.id, 'materialCost', e.target.value)}
+                                placeholder="$0.00"
+                                disabled={userType === 'admin'}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Indirect Rate (%)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricingData[clin.id]?.indirectRate || ''}
+                                onChange={(e) => updatePricingData(clin.id, 'indirectRate', e.target.value)}
+                                placeholder="0.00"
+                                disabled={userType === 'admin'}
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Option Years */}
+                    {evaluationPeriods.filter(p => p.type === 'option').map((period, yearIndex) => (
+                      <div key={period.id} className="space-y-3">
+                        <h5 className="font-medium text-sm text-gray-700">
+                          <Calendar className="h-4 w-4 inline mr-2" />
+                          {period.name}
+                        </h5>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {clin.pricingModel === 'FFP' && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Total Price</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={pricingData[clin.id]?.optionYears?.[yearIndex]?.price || ''}
+                                onChange={(e) => updatePricingData(clin.id, 'price', e.target.value, yearIndex)}
+                                placeholder="$0.00"
+                                disabled={userType === 'admin'}
+                              />
+                            </div>
+                          )}
+                          
+                          {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
+                            <>
                               <div className="space-y-2">
-                                <Label className="text-sm font-medium">Total Price</Label>
+                                <Label className="text-sm font-medium">Labor Hours</Label>
+                                <Input
+                                  type="number"
+                                  value={pricingData[clin.id]?.optionYears?.[yearIndex]?.hours || ''}
+                                  onChange={(e) => updatePricingData(clin.id, 'hours', e.target.value, yearIndex)}
+                                  placeholder="0"
+                                  disabled={userType === 'admin'}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Labor Rate</Label>
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  value={pricingData[offeror.id]?.[clin.id]?.basePrice || ''}
-                                  onChange={(e) => updatePricingData(offeror.id, clin.id, 'basePrice', e.target.value)}
+                                  value={pricingData[clin.id]?.optionYears?.[yearIndex]?.rate || ''}
+                                  onChange={(e) => updatePricingData(clin.id, 'rate', e.target.value, yearIndex)}
                                   placeholder="$0.00"
+                                  disabled={userType === 'admin'}
                                 />
                               </div>
-                            )}
-                                                        
-                            {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
-                              <>
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Labor Hours</Label>
-                                  <Input
-                                    type="number"
-                                    value={pricingData[offeror.id]?.[clin.id]?.laborHours || ''}
-                                    onChange={(e) => updatePricingData(offeror.id, clin.id, 'laborHours', e.target.value)}
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Labor Rate</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={pricingData[offeror.id]?.[clin.id]?.laborRate || ''}
-                                    onChange={(e) => updatePricingData(offeror.id, clin.id, 'laborRate', e.target.value)}
-                                    placeholder="$0.00"
-                                  />
-                                </div>
-                              </>
-                            )}
-                                                        
-                            {clin.pricingModel === 'CR' && (
-                              <>
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Material Cost</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={pricingData[offeror.id]?.[clin.id]?.materialCost || ''}
-                                    onChange={(e) => updatePricingData(offeror.id, clin.id, 'materialCost', e.target.value)}
-                                    placeholder="$0.00"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Indirect Rate (%)</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={pricingData[offeror.id]?.[clin.id]?.indirectRate || ''}
-                                    onChange={(e) => updatePricingData(offeror.id, clin.id, 'indirectRate', e.target.value)}
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                              </>
-                            )}
-                          </div>
+                            </>
+                          )}
                         </div>
-                                                
-                        {evaluationPeriods.filter(p => p.type === 'option').map((period, yearIndex) => (
-                          <div key={period.id} className="space-y-3">
-                            <h5 className="font-medium text-sm text-gray-700">
-                              <Calendar className="h-4 w-4 inline mr-2" />
-                              {period.name}
-                            </h5>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {clin.pricingModel === 'FFP' && (
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Total Price</Label>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={pricingData[offeror.id]?.[clin.id]?.optionYears?.[yearIndex]?.price || ''}
-                                    onChange={(e) => updatePricingData(offeror.id, clin.id, 'price', e.target.value, yearIndex)}
-                                    placeholder="$0.00"
-                                  />
-                                </div>
-                              )}
-                                                            
-                              {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
-                                <>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Labor Hours</Label>
-                                    <Input
-                                      type="number"
-                                      value={pricingData[offeror.id]?.[clin.id]?.optionYears?.[yearIndex]?.hours || ''}
-                                      onChange={(e) => updatePricingData(offeror.id, clin.id, 'hours', e.target.value, yearIndex)}
-                                      placeholder="0"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">Labor Rate</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      value={pricingData[offeror.id]?.[clin.id]?.optionYears?.[yearIndex]?.rate || ''}
-                                      onChange={(e) => updatePricingData(offeror.id, clin.id, 'rate', e.target.value, yearIndex)}
-                                      placeholder="$0.00"
-                                    />
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                                                
-                        <Alert>
-                          <Calculator className="h-4 w-4" />
-                          <AlertDescription>
-                            <strong>CLIN Total: ${calculateClinTotal(offeror.id, clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                          </AlertDescription>
-                        </Alert>
                       </div>
                     ))}
-                                        
-                    <Separator />
-                                        
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-lg font-semibold text-blue-800">
-                        <Calculator className="h-5 w-5 inline mr-2" />
-                        Total Evaluated Price: ${calculateOfferorTotal(offeror.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </div>
-                    </div>
+                    
+                    {/* Real-time CLIN Total */}
+                    <Alert>
+                      <Calculator className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>CLIN Total: ${calculateClinTotal(clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                      </AlertDescription>
+                    </Alert>
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Real-time Grand Total */}
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-lg font-semibold text-blue-800">
+                  <Calculator className="h-5 w-5 inline mr-2" />
+                  Total Evaluated Price: ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="results">
-            {Object.keys(evaluationResults).length > 0 ? (
+          <TabsContent value="summary">
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>
                     <Eye className="h-5 w-5 inline mr-2" />
-                    Evaluation Results
+                    Pricing Summary
                   </CardTitle>
                   <CardDescription>
-                    Your proposal cost breakdown and summary
+                    Comprehensive breakdown of your proposal pricing
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="rounded-md border overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b bg-gray-50">
-                          <th className="p-3 text-left font-semibold w-16">Rank</th>
-                          <th className="p-3 text-left font-semibold">Vendor</th>
-                          <th className="p-3 text-right font-semibold">Total Price</th>
-                          <th className="p-3 text-right font-semibold">Status</th>
-                          {clins.map(clin => (
-                            <th key={clin.id} className="p-3 text-right font-semibold">{clin.name}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(evaluationResults).map(([offerorId, result]: [string, any]) => {
-                          const offeror = offerors.find(o => o.id === parseInt(offerorId));
-                          return (
-                            <tr key={offerorId} className="border-b bg-blue-50">
-                              <td className="p-3 font-medium">
-                                <Badge className="bg-blue-600">#1</Badge>
-                              </td>
-                              <td className="p-3 font-medium">
-                                <div className="flex items-center gap-2">
-                                  {offeror?.name}
-                                </div>
-                              </td>
-                              <td className="p-3 text-right font-semibold">
-                                ${result.total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                              </td>
-                              <td className="p-3 text-right">
-                                <Badge variant="default">Your Proposal</Badge>
-                              </td>
-                              {clins.map(clin => (
-                                <td key={clin.id} className="p-3 text-right">
-                                  ${(result.clinBreakdown[clin.id] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                </td>
-                              ))}
+                  {/* Period Breakdown */}
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-medium text-lg mb-4">Cost by Evaluation Period</h4>
+                      <div className="rounded-md border overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-gray-50">
+                              <th className="p-3 text-left font-semibold">Period</th>
+                              <th className="p-3 text-right font-semibold">Total Cost</th>
+                              <th className="p-3 text-right font-semibold">% of Total</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                          </thead>
+                          <tbody>
+                            {evaluationPeriods.map((period, index) => {
+                              const periodTotal = calculatePeriodTotal(index);
+                              const grandTotal = calculateGrandTotal();
+                              const percentage = grandTotal > 0 ? (periodTotal / grandTotal) * 100 : 0;
+                              
+                              return (
+                                <tr key={period.id} className="border-b">
+                                  <td className="p-3 font-medium">{period.name}</td>
+                                  <td className="p-3 text-right font-semibold">
+                                    ${periodTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    {percentage.toFixed(1)}%
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* CLIN Breakdown */}
+                    <div>
+                      <h4 className="font-medium text-lg mb-4">Cost by Contract Line Item</h4>
+                      <div className="rounded-md border overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-gray-50">
+                              <th className="p-3 text-left font-semibold">CLIN</th>
+                              <th className="p-3 text-left font-semibold">Description</th>
+                              <th className="p-3 text-center font-semibold">Pricing Model</th>
+                              <th className="p-3 text-right font-semibold">Total Cost</th>
+                              <th className="p-3 text-right font-semibold">% of Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {clins.map(clin => {
+                              const clinTotal = calculateClinTotal(clin.id);
+                              const grandTotal = calculateGrandTotal();
+                              const percentage = grandTotal > 0 ? (clinTotal / grandTotal) * 100 : 0;
+                              
+                              return (
+                                <tr key={clin.id} className="border-b">
+                                  <td className="p-3 font-medium">{clin.name}</td>
+                                  <td className="p-3">{clin.description}</td>
+                                  <td className="p-3 text-center">
+                                    {getPricingModelBadge(clin.pricingModel)}
+                                  </td>
+                                  <td className="p-3 text-right font-semibold">
+                                    ${clinTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    {percentage.toFixed(1)}%
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Grand Total */}
+                    <div className="p-6 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-800 mb-2">
+                          Total Proposal Value
+                        </div>
+                        <div className="text-3xl font-bold text-blue-900">
+                          ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </div>
+                        <div className="text-sm text-blue-700 mt-2">
+                          {userType === 'vendor' ? 'Your Proposal' : 'Vendor Proposal'} • {clins.length} CLINs • {evaluationPeriods.length} Periods
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Calculator className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Results Yet</h3>
-                  <p className="text-gray-500 mb-4">Enter pricing data and click "Calculate Results" to see the evaluation.</p>
-                  <Button onClick={() => setActiveTab('pricing')} variant="outline">
-                    Go to Pricing
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

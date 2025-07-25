@@ -42,6 +42,7 @@ async function main() {
       questionCutoffDate: new Date('2025-08-01'),
       proposalCutoffDate: new Date('2025-08-10'),
       status: 'OPEN',
+
     },
   })
 
@@ -57,6 +58,7 @@ async function main() {
       questionCutoffDate: new Date('2025-08-15'),
       proposalCutoffDate: new Date('2025-08-25'),
       status: 'OPEN',
+
     },
   })
 

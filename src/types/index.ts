@@ -86,6 +86,13 @@ export interface SampleSolicitation {
   status: string;
   attachments: Attachment[];
   clins: SampleClin[];
+  evaluationPeriods?: EvaluationPeriod[];
+}
+
+export interface EvaluationPeriod {
+  id: string;
+  name: string;
+  type: 'base' | 'option';
 }
 
 export interface SampleClin {

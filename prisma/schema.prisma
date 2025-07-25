@@ -33,6 +33,7 @@ model Solicitation {
   questionCutoffDate DateTime?
   proposalCutoffDate DateTime?
   status             SolicitationStatus @default(OPEN)
+  evaluationPeriods  Json?              // Store evaluation periods as JSON
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   clins              Clin[]
