@@ -33,7 +33,7 @@ model Solicitation {
   questionCutoffDate DateTime?
   proposalCutoffDate DateTime?
   status             SolicitationStatus @default(OPEN)
-  evaluationPeriods  Json?              // Store evaluation periods as JSON
+  evaluationPeriods  Json?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   clins              Clin[]
@@ -48,7 +48,7 @@ model Clin {
   name           String
   description    String
   pricingModel   PricingModel
-  periodId       String       // Links to evaluation period
+  periodId       String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   solicitationId String
@@ -73,22 +73,22 @@ model Proposal {
 }
 
 model Question {
-  id             String         @id @default(cuid())
-  question       String
-  answer         String?
-  status         QuestionStatus @default(DRAFT)
-  dateAsked      DateTime       @default(now())
-  dateAnswered   DateTime?
-  dateSubmitted  DateTime?
-  datePosted     DateTime?
-  isQuestionDraft Boolean       @default(true)
-  isAnswerDraft   Boolean       @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  vendorId       String
-  solicitationId String
-  solicitation   Solicitation   @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
-  vendor         User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  question        String
+  answer          String?
+  status          QuestionStatus @default(DRAFT)
+  dateAsked       DateTime       @default(now())
+  dateAnswered    DateTime?
+  dateSubmitted   DateTime?
+  datePosted      DateTime?
+  isQuestionDraft Boolean        @default(true)
+  isAnswerDraft   Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  vendorId        String
+  solicitationId  String
+  solicitation    Solicitation   @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  vendor          User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@map("questions")
 }
