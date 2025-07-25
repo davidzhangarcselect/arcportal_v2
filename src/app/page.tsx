@@ -34,6 +34,8 @@ const ArcPortal = () => {
     description: '',
     agency: '',
     dueDate: '',
+    questionCutoffDate: '',
+    proposalCutoffDate: '',
     status: 'open' as 'open' | 'closed'
   });
   
@@ -64,6 +66,8 @@ const ArcPortal = () => {
           setSolicitations(solicitationsData.map((s: any) => ({
             ...s,
             dueDate: new Date(s.dueDate).toISOString().split('T')[0],
+            questionCutoffDate: s.questionCutoffDate ? new Date(s.questionCutoffDate).toISOString().slice(0, 16) : undefined,
+            proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
             status: s.status.toLowerCase(),
             attachments: [
               { name: 'Statement of Work.pdf', size: '2.3 MB' },
@@ -295,6 +299,8 @@ const ArcPortal = () => {
           description: '',
           agency: '',
           dueDate: '',
+          questionCutoffDate: '',
+          proposalCutoffDate: '',
           status: 'open'
         });
         alert('Solicitation created successfully!');
@@ -887,28 +893,47 @@ const ArcPortal = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="dueDate">Due Date</Label>
+                  <Label htmlFor="dueDate">Proposal Due Date</Label>
                   <Input
                     id="dueDate"
-                    type="date"
+                    type="datetime-local"
                     value={newSolicitationData.dueDate}
                     onChange={(e) => setNewSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setNewSolicitationData(prev => ({ ...prev, status: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="questionCutoffDate">Question Cutoff</Label>
+                  <Input
+                    id="questionCutoffDate"
+                    type="datetime-local"
+                    value={newSolicitationData.questionCutoffDate}
+                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                  />
                 </div>
+                <div>
+                  <Label htmlFor="proposalCutoffDate">Proposal Cutoff</Label>
+                  <Input
+                    id="proposalCutoffDate"
+                    type="datetime-local"
+                    value={newSolicitationData.proposalCutoffDate}
+                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setNewSolicitationData(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="flex justify-end gap-2">

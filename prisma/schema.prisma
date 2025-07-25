@@ -40,6 +40,8 @@ model Solicitation {
   agency      String
   description String
   dueDate     DateTime
+  questionCutoffDate DateTime?
+  proposalCutoffDate DateTime?
   status      SolicitationStatus @default(OPEN)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

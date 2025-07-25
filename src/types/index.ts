@@ -80,6 +80,8 @@ export interface SampleSolicitation {
   title: string;
   agency: string;
   dueDate: string;
+  questionCutoffDate?: string;
+  proposalCutoffDate?: string;
   description: string;
   status: string;
   attachments: Attachment[];
