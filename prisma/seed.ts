@@ -39,6 +39,8 @@ async function main() {
       agency: 'Department of Technology',
       description: 'Seeking qualified vendors for enterprise software development and maintenance services.',
       dueDate: new Date('2025-08-15'),
+      questionCutoffDate: new Date('2025-08-01'),
+      proposalCutoffDate: new Date('2025-08-10'),
       status: 'OPEN',
     },
   })
@@ -52,6 +54,8 @@ async function main() {
       agency: 'Department of Defense',
       description: 'Comprehensive cybersecurity assessment and consulting services.',
       dueDate: new Date('2025-09-01'),
+      questionCutoffDate: new Date('2025-08-15'),
+      proposalCutoffDate: new Date('2025-08-25'),
       status: 'OPEN',
     },
   })
@@ -82,16 +86,59 @@ async function main() {
   })
 
   // Create sample questions
-  await prisma.question.create({
-    data: {
-      question: 'What is the expected timeline for project deliverables?',
-      answer: 'The project timeline is 18 months with quarterly deliverables.',
-      status: 'ANSWERED',
-      dateAsked: new Date('2025-07-01'),
-      dateAnswered: new Date('2025-07-03'),
-      vendorId: vendorUser.id,
-      solicitationId: solicitation1.id,
-    },
+  await prisma.question.createMany({
+    data: [
+      {
+        question: 'What is the expected timeline for project deliverables?',
+        answer: 'The project timeline is 18 months with quarterly deliverables.',
+        status: 'POSTED',
+        dateAsked: new Date('2025-07-01'),
+        dateAnswered: new Date('2025-07-03'),
+        dateSubmitted: new Date('2025-07-01'),
+        datePosted: new Date('2025-07-03'),
+        isQuestionDraft: false,
+        isAnswerDraft: false,
+        vendorId: vendorUser.id,
+        solicitationId: solicitation1.id,
+      },
+      {
+        question: 'Are there any specific technology stack requirements?',
+        answer: 'We prefer modern web technologies including React, Node.js, and PostgreSQL, but are open to alternatives with proper justification.',
+        status: 'POSTED',
+        dateAsked: new Date('2025-07-02'),
+        dateAnswered: new Date('2025-07-04'),
+        dateSubmitted: new Date('2025-07-02'),
+        datePosted: new Date('2025-07-04'),
+        isQuestionDraft: false,
+        isAnswerDraft: false,
+        vendorId: vendorUser.id,
+        solicitationId: solicitation1.id,
+      },
+      {
+        question: 'What is the budget range for this project?',
+        status: 'SUBMITTED',
+        dateAsked: new Date('2025-07-05'),
+        dateSubmitted: new Date('2025-07-05'),
+        isQuestionDraft: false,
+        isAnswerDraft: true,
+        vendorId: vendorUser.id,
+        solicitationId: solicitation1.id,
+      },
+      {
+        question: 'Will there be opportunities for contract extensions?',
+        answer: 'Yes, there will be two optional 12-month extension periods based on performance.',
+        status: 'POSTED',
+        dateAsked: new Date('2025-07-03'),
+        dateAnswered: new Date('2025-07-05'),
+        dateSubmitted: new Date('2025-07-03'),
+        datePosted: new Date('2025-07-05'),
+        isQuestionDraft: false,
+        isAnswerDraft: false,
+        vendorId: vendorUser.id,
+        solicitationId: solicitation2.id,
+      },
+    ],
+    skipDuplicates: true,
   })
 
   console.log('✅ Database seeded successfully!')
