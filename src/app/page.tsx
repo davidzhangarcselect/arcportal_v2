@@ -100,6 +100,21 @@ const ArcPortal = () => {
             notes: p.notes || ''
           })));
         }
+
+        // Load vendors/users
+        const usersResponse = await fetch('/api/users');
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          setVendors(usersData.map((u: any) => ({
+            id: u.id,
+            name: u.name || '',
+            email: u.email,
+            companyName: u.companyName || '',
+            ueiNumber: u.ueiNumber || '',
+            socioEconomicStatus: u.socioEconomicStatus || [],
+            registrationDate: new Date(u.createdAt).toISOString().split('T')[0]
+          })));
+        }
       } catch (error) {
         console.error('Error loading data:', error);
       }
@@ -598,7 +613,8 @@ const ArcPortal = () => {
       { id: 'dashboard', label: 'Dashboard', icon: Building2 },
       { id: 'solicitations', label: 'Manage Solicitations', icon: FileText },
       { id: 'proposals', label: 'Review Proposals', icon: Eye },
-      { id: 'questions', label: 'Q&A Management', icon: MessageSquare }
+      { id: 'questions', label: 'Q&A Management', icon: MessageSquare },
+      { id: 'vendors', label: 'Registered Vendors', icon: Users }
     ];
 
     const navItems = userType === 'admin' ? adminNavItems : vendorNavItems;
@@ -2814,6 +2830,110 @@ const ArcPortal = () => {
     );
   };
 
+  // Vendors View Component (Admin only)
+  const VendorsView = () => {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Registered Vendors</h2>
+          <div className="flex gap-2">
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+              <Input placeholder="Search vendors..." className="pl-10 w-64" />
+            </div>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          {vendors.map(vendor => (
+            <Card key={vendor.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold">{vendor.companyName || vendor.name}</h3>
+                      <Badge variant="secondary">
+                        {vendor.socioEconomicStatus.length > 0 ? vendor.socioEconomicStatus.join(', ') : 'Standard'}
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Contact Email</Label>
+                        <p className="text-sm">{vendor.email}</p>
+                      </div>
+                      {vendor.ueiNumber && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">UEI Number</Label>
+                          <p className="text-sm font-mono">{vendor.ueiNumber}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <Building2 className="h-4 w-4" />
+                        {vendor.companyName || 'Individual Vendor'}
+                      </span>
+                      {vendor.registrationDate && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Registered: {vendor.registrationDate}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <FileText className="h-4 w-4" />
+                        {proposals.filter(p => p.vendorId === vendor.id).length} proposals
+                      </span>
+                    </div>
+
+                    {vendor.socioEconomicStatus.length > 0 && (
+                      <div className="mt-3">
+                        <Label className="text-sm font-medium text-gray-600">Socio-Economic Classifications</Label>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {vendor.socioEconomicStatus.map((status, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {status}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm">
+                      <Eye className="h-4 w-4 mr-1" />
+                      View Details
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      Contact
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          
+          {vendors.length === 0 && (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Vendors Registered</h3>
+                <p className="text-gray-600">No vendors have registered in the system yet.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Main render logic for authenticated users
   const renderActiveView = () => {
     switch (activeView) {
@@ -2825,6 +2945,8 @@ const ArcPortal = () => {
         return userType === 'admin' ? <ProposalReview /> : <MyProposalsView />;
       case 'questions':
         return userType === 'admin' ? <ProposalReview /> : <Dashboard />;
+      case 'vendors':
+        return userType === 'admin' ? <VendorsView /> : <Dashboard />;
       case 'profile':
         return userType === 'vendor' ? <VendorProfile /> : <Dashboard />;
       default:
