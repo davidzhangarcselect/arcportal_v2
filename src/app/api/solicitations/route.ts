@@ -120,6 +120,8 @@ export async function PUT(request: Request) {
     if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
     if (status !== undefined) updateData.status = status;
 
+    console.log('About to update solicitation with data:', JSON.stringify(updateData, null, 2))
+    
     const solicitation = await prisma.solicitation.update({
       where: { id },
       data: updateData,
@@ -133,6 +135,13 @@ export async function PUT(request: Request) {
         }
       }
     })
+
+    console.log('Updated solicitation result:', JSON.stringify({
+      id: solicitation.id,
+      evaluationPeriods: (solicitation as any).evaluationPeriods,
+      clinsCount: solicitation.clins.length,
+      clins: solicitation.clins
+    }, null, 2))
 
     return NextResponse.json(solicitation)
   } catch (error) {
