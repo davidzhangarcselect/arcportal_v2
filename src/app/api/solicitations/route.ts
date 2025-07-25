@@ -97,20 +97,25 @@ export async function PUT(request: Request) {
       }
     }
 
+    // Build update data object with only provided fields
+    const updateData: any = {
+      ...clinUpdateData
+    };
+
+    // Only update fields that are provided
+    if (number !== undefined) updateData.number = number;
+    if (title !== undefined) updateData.title = title;
+    if (agency !== undefined) updateData.agency = agency;
+    if (description !== undefined) updateData.description = description;
+    if (dueDate !== undefined) updateData.dueDate = new Date(dueDate);
+    if (questionCutoffDate !== undefined) updateData.questionCutoffDate = new Date(questionCutoffDate);
+    if (proposalCutoffDate !== undefined) updateData.proposalCutoffDate = new Date(proposalCutoffDate);
+    if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
+    if (status !== undefined) updateData.status = status;
+
     const solicitation = await prisma.solicitation.update({
       where: { id },
-      data: {
-        number,
-        title,
-        agency,
-        description,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
-        questionCutoffDate: questionCutoffDate ? new Date(questionCutoffDate) : null,
-        proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
-        ...(evaluationPeriods && { evaluationPeriods: JSON.stringify(evaluationPeriods) }),
-        status,
-        ...clinUpdateData
-      },
+      data: updateData,
       include: {
         clins: true,
         _count: {
