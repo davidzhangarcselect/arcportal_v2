@@ -2335,11 +2335,10 @@ const ArcPortal = () => {
       periodClins: {},
       evaluationPeriods: []
     });
-    const [justSaved, setJustSaved] = useState(false);
 
     // Initialize with solicitation data
     useEffect(() => {
-      if (solicitation && currentUser && !justSaved) {
+      if (solicitation && currentUser) {
         // Load evaluation periods from solicitation or use defaults
         const periods = solicitation.evaluationPeriods || [
           { id: 'base_year_1', name: 'Base Year', type: 'base' }
@@ -2404,7 +2403,7 @@ const ArcPortal = () => {
         });
         setPricingData(initialPricing);
       }
-    }, [solicitation, currentUser, justSaved]);
+    }, [solicitation, currentUser]);
 
     // Track changes for unsaved changes indicator
     useEffect(() => {
@@ -2444,28 +2443,15 @@ const ArcPortal = () => {
         });
 
         if (response.ok) {
-          const updatedSolicitation = await response.json();
-          
-          // Set flag to prevent useEffect from resetting state
-          setJustSaved(true);
-          
-          // Update the original setup to reflect saved state
+          // Update the original setup to reflect saved state - this prevents the "unsaved changes" indicator
           setOriginalSetup({
             periodClins: JSON.parse(JSON.stringify(periodClins)),
             evaluationPeriods: JSON.parse(JSON.stringify(evaluationPeriods))
           });
           setHasUnsavedChanges(false);
           
-          // Update the solicitation in the parent state with the full updated solicitation
-          setSolicitations(prev => prev.map(s => 
-            s.id === solicitation.id ? {
-              ...updatedSolicitation,
-              evaluationPeriods: evaluationPeriods
-            } : s
-          ));
-          
-          // Clear the flag after a short delay
-          setTimeout(() => setJustSaved(false), 100);
+          // Don't update the parent solicitations array to avoid triggering useEffect
+          // The current state (periodClins, evaluationPeriods) already reflects what we want
           
           alert('Setup saved successfully!');
         } else {
