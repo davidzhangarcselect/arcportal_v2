@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Plus, Trash2, Download, Upload, FileText, Calendar, Building2, Users,
   MessageSquare, Send, Eye, Clock, AlertCircle, Calculator,
@@ -574,8 +575,13 @@ const ArcPortal = () => {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 text-white rounded-lg">
-              <Building2 className="h-6 w-6" />
+            <div className="relative h-10 w-10 rounded-lg overflow-hidden">
+              <Image 
+                src="/logo.jpg" 
+                alt="ArcPortal Logo" 
+                fill
+                className="object-cover"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">ArcPortal</h1>
