@@ -39,6 +39,39 @@ const ArcPortal = () => {
     status: 'open' as 'open' | 'closed'
   });
   
+  // Cutoff utility functions
+  const isQuestionCutoffPassed = (solicitation: SampleSolicitation) => {
+    if (!solicitation.questionCutoffDate) return false;
+    return new Date() > new Date(solicitation.questionCutoffDate);
+  };
+
+  const isProposalCutoffPassed = (solicitation: SampleSolicitation) => {
+    if (!solicitation.proposalCutoffDate) return false;
+    return new Date() > new Date(solicitation.proposalCutoffDate);
+  };
+
+  const getSolicitationStatus = (solicitation: SampleSolicitation) => {
+    if (solicitation.status === 'closed') return 'closed';
+    if (isProposalCutoffPassed(solicitation)) return 'proposals_closed';
+    if (isQuestionCutoffPassed(solicitation)) return 'questions_closed';
+    return 'open';
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'open':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Open</Badge>;
+      case 'questions_closed':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Questions Closed</Badge>;
+      case 'proposals_closed':
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Proposals Closed</Badge>;
+      case 'closed':
+        return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Closed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+  
   // Data states
   const [vendors, setVendors] = useState<SampleUser[]>([]);
   const [solicitations, setSolicitations] = useState<SampleSolicitation[]>([]);
@@ -962,9 +995,7 @@ const ArcPortal = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold">{solicitation.number}</h3>
-                      <Badge variant={solicitation.status === 'open' ? 'default' : 'secondary'}>
-                        {solicitation.status}
-                      </Badge>
+                      {getStatusBadge(getSolicitationStatus(solicitation))}
                     </div>
                     <h4 className="font-medium mb-2">{solicitation.title}</h4>
                     <p className="text-gray-600 mb-3">{solicitation.description}</p>
@@ -1056,11 +1087,16 @@ const ArcPortal = () => {
             <TabsTrigger value="attachments">Attachments</TabsTrigger>
             <TabsTrigger value="questions">Q&A</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            {userType === 'vendor' && (
+            {userType === 'vendor' && !isProposalCutoffPassed(solicitation) && (
               <>
                 <TabsTrigger value="proposal-attachments">Proposal Attachments</TabsTrigger>
                 <TabsTrigger value="submit">Submit Proposal</TabsTrigger>
               </>
+            )}
+            {userType === 'vendor' && isProposalCutoffPassed(solicitation) && (
+              <TabsTrigger value="proposal-closed" disabled>
+                Proposal Submission Closed
+              </TabsTrigger>
             )}
           </TabsList>
 
@@ -1080,16 +1116,44 @@ const ArcPortal = () => {
                     <p className="font-medium">{solicitation.agency}</p>
                   </div>
                   <div>
-                    <Label>Due Date</Label>
+                    <Label>Proposal Due Date</Label>
                     <p className="font-medium">{solicitation.dueDate}</p>
                   </div>
                   <div>
                     <Label>Status</Label>
-                    <Badge variant={solicitation.status === 'open' ? 'default' : 'secondary'}>
-                      {solicitation.status}
-                    </Badge>
+                    {getStatusBadge(getSolicitationStatus(solicitation))}
                   </div>
                 </div>
+                
+                {(solicitation.questionCutoffDate || solicitation.proposalCutoffDate) && (
+                  <div className="border-t pt-4">
+                    <Label className="text-base font-medium">Submission Deadlines</Label>
+                    <div className="grid grid-cols-2 gap-4 mt-2">
+                      {solicitation.questionCutoffDate && (
+                        <div>
+                          <Label className="text-sm">Question Submissions</Label>
+                          <p className={`text-sm font-medium ${isQuestionCutoffPassed(solicitation) ? 'text-red-600' : 'text-gray-900'}`}>
+                            {new Date(solicitation.questionCutoffDate).toLocaleString()}
+                            {isQuestionCutoffPassed(solicitation) && (
+                              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">CLOSED</span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                      {solicitation.proposalCutoffDate && (
+                        <div>
+                          <Label className="text-sm">Proposal Submissions</Label>
+                          <p className={`text-sm font-medium ${isProposalCutoffPassed(solicitation) ? 'text-red-600' : 'text-gray-900'}`}>
+                            {new Date(solicitation.proposalCutoffDate).toLocaleString()}
+                            {isProposalCutoffPassed(solicitation) && (
+                              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">CLOSED</span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label>Description</Label>
                   <p className="mt-1">{solicitation.description}</p>
@@ -1151,20 +1215,37 @@ const ArcPortal = () => {
                 <CardHeader>
                   <CardTitle>Submit a Question</CardTitle>
                   <CardDescription>
-                    Ask questions about this solicitation. Responses will be visible to all vendors.
+                    {isQuestionCutoffPassed(solicitation) 
+                      ? "Question submission period has ended."
+                      : "Ask questions about this solicitation. Responses will be visible to all vendors."
+                    }
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    placeholder="Enter your question here..."
-                    rows={3}
-                  />
-                  <Button onClick={handleSubmitQuestion} disabled={!newQuestion.trim()}>
-                    <Send className="h-4 w-4 mr-2" />
-                    Submit Question
-                  </Button>
+                  {isQuestionCutoffPassed(solicitation) ? (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-red-800">
+                        <AlertTriangle className="h-5 w-5" />
+                        <span className="font-medium">Question Submission Closed</span>
+                      </div>
+                      <p className="text-sm text-red-700 mt-1">
+                        The deadline for submitting questions was {solicitation.questionCutoffDate ? new Date(solicitation.questionCutoffDate).toLocaleString() : 'not specified'}.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <Textarea
+                        value={newQuestion}
+                        onChange={(e) => setNewQuestion(e.target.value)}
+                        placeholder="Enter your question here..."
+                        rows={3}
+                      />
+                      <Button onClick={handleSubmitQuestion} disabled={!newQuestion.trim()}>
+                        <Send className="h-4 w-4 mr-2" />
+                        Submit Question
+                      </Button>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1241,7 +1322,7 @@ const ArcPortal = () => {
             <PriceEvaluationTool solicitation={solicitation} />
           </TabsContent>
 
-          {userType === 'vendor' && (
+          {userType === 'vendor' && !isProposalCutoffPassed(solicitation) && (
             <>
               <TabsContent value="proposal-attachments" className="space-y-4">
                 <ProposalAttachments solicitation={solicitation} proposalData={proposalData} setProposalData={setProposalData} setActiveTab={setActiveTab} />
@@ -1250,6 +1331,28 @@ const ArcPortal = () => {
                 <ProposalSubmission solicitation={solicitation} proposalData={proposalData} onSubmit={submitProposal} setActiveTab={setActiveTab} />
               </TabsContent>
             </>
+          )}
+          
+          {userType === 'vendor' && isProposalCutoffPassed(solicitation) && (
+            <TabsContent value="proposal-closed" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Proposal Submission Closed</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-center">
+                    <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-red-800 mb-2">Submission Period Ended</h3>
+                    <p className="text-red-700 mb-4">
+                      The deadline for proposal submissions was {solicitation.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toLocaleString() : 'not specified'}.
+                    </p>
+                    <p className="text-sm text-red-600">
+                      No new proposals can be submitted for this solicitation.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
           )}
         </Tabs>
       </div>

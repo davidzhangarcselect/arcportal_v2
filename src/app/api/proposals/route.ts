@@ -40,6 +40,40 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { vendorId, solicitationId, notes } = body
 
+    // Check if solicitation exists and get cutoff date
+    const solicitation = await prisma.solicitation.findUnique({
+      where: { id: solicitationId },
+      select: { proposalCutoffDate: true, status: true }
+    })
+
+    if (!solicitation) {
+      return NextResponse.json(
+        { error: 'Solicitation not found' },
+        { status: 404 }
+      )
+    }
+
+    // Check if solicitation is still open
+    if (solicitation.status !== 'OPEN') {
+      return NextResponse.json(
+        { error: 'Solicitation is closed' },
+        { status: 403 }
+      )
+    }
+
+    // Check proposal cutoff date
+    if (solicitation.proposalCutoffDate) {
+      const now = new Date()
+      const cutoff = new Date(solicitation.proposalCutoffDate)
+      
+      if (now > cutoff) {
+        return NextResponse.json(
+          { error: 'Proposal submission deadline has passed' },
+          { status: 403 }
+        )
+      }
+    }
+
     const proposal = await prisma.proposal.create({
       data: {
         vendorId,
