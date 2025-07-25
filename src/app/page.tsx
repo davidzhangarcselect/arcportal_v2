@@ -1202,9 +1202,23 @@ const ArcPortal = () => {
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
+                  <div className="flex gap-2">
+                    {userType === 'admin' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditSolicitation(solicitation);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
