@@ -2604,7 +2604,7 @@ const ArcPortal = () => {
       switch (clin.pricingModel) {
         case 'FFP':
           return parseFloat(data.basePrice) || 0;
-        case 'T&M':
+        case 'TM':
           return (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0);
         case 'CR':
           const directCost = (parseFloat(data.laborHours) || 0) * (parseFloat(data.laborRate) || 0) + (parseFloat(data.materialCost) || 0);
@@ -2630,7 +2630,7 @@ const ArcPortal = () => {
     const getPricingModelBadge = (model: string) => {
       const variants: any = {
         'FFP': 'default',
-        'T&M': 'secondary',
+        'TM': 'secondary',
         'CR': 'outline'
       };
       return <Badge variant={variants[model] || 'default'}>{model}</Badge>;
@@ -2775,7 +2775,7 @@ const ArcPortal = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="FFP">Firm Fixed Price</SelectItem>
-                                  <SelectItem value="T&M">Time & Materials</SelectItem>
+                                  <SelectItem value="TM">Time & Materials</SelectItem>
                                   <SelectItem value="CR">Cost Reimbursable</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -2885,7 +2885,7 @@ const ArcPortal = () => {
                           </div>
                         )}
                         
-                         {(clin.pricingModel === 'T&M' || clin.pricingModel === 'CR') && (
+                         {(clin.pricingModel === 'TM' || clin.pricingModel === 'CR') && (
                            <>
                              <div className="space-y-2">
                                <Label className="text-sm font-medium">Labor Hours</Label>
