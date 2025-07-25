@@ -18,14 +18,29 @@ export async function GET() {
       }
     })
 
-    // Temporary logging to debug the issue
+
+
+    // Temporary logging to see current state
     const rfp002 = solicitations.find(s => s.number === 'RFP-2025-002');
     if (rfp002) {
-      console.log('RFP-2025-002 API response:', JSON.stringify({
-        evaluationPeriods: (rfp002 as any).evaluationPeriods,
-        clinsCount: rfp002.clins.length,
-        clins: rfp002.clins.map(c => ({ id: c.id, name: c.name, periodId: (c as any).periodId }))
-      }, null, 2));
+      const periods = JSON.parse((rfp002 as any).evaluationPeriods || '[]');
+      const clinsByPeriod: any = {};
+      rfp002.clins.forEach((clin: any) => {
+        if (!clinsByPeriod[clin.periodId]) {
+          clinsByPeriod[clin.periodId] = [];
+        }
+        clinsByPeriod[clin.periodId].push({
+          name: clin.name,
+          description: clin.description,
+          pricingModel: clin.pricingModel
+        });
+      });
+      
+      console.log('🔍 RFP-2025-002 Current State:');
+      periods.forEach((period: any) => {
+        const clins = clinsByPeriod[period.id] || [];
+        console.log(`${period.name}: ${clins.length} CLINs`, clins.map((c: any) => c.name).join(', '));
+      });
     }
 
     return NextResponse.json(solicitations)
