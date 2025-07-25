@@ -18,6 +18,16 @@ export async function GET() {
       }
     })
 
+    // Temporary logging to debug the issue
+    const rfp002 = solicitations.find(s => s.number === 'RFP-2025-002');
+    if (rfp002) {
+      console.log('RFP-2025-002 API response:', JSON.stringify({
+        evaluationPeriods: (rfp002 as any).evaluationPeriods,
+        clinsCount: rfp002.clins.length,
+        clins: rfp002.clins.map(c => ({ id: c.id, name: c.name, periodId: (c as any).periodId }))
+      }, null, 2));
+    }
+
     return NextResponse.json(solicitations)
   } catch (error) {
     console.error('Error fetching solicitations:', error)
