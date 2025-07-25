@@ -1335,6 +1335,51 @@ const ArcPortal = () => {
       }
     }, [solicitation, currentUser]);
 
+    const addClin = () => {
+      const newId = Math.max(...clins.map(c => c.id), 0) + 1;
+      const newClin = {
+        id: newId,
+        name: `CLIN ${String(clins.length + 1).padStart(4, '0')}`,
+        description: 'New Contract Line Item',
+        pricingModel: 'FFP'
+      };
+      setClins([...clins, newClin]);
+
+      // Initialize pricing data for the new CLIN
+      const newPricing = { ...pricingData };
+      offerors.forEach(offeror => {
+        if (!newPricing[offeror.id]) newPricing[offeror.id] = {};
+        newPricing[offeror.id][newId] = {
+          basePrice: '',
+          laborHours: '',
+          laborRate: '',
+          materialCost: '',
+          indirectRate: '',
+          optionYears: evaluationPeriods.filter(p => p.type === 'option').map(() => ({ price: '', hours: '', rate: '' }))
+        };
+      });
+      setPricingData(newPricing);
+    };
+
+    const removeClin = (clinId: number) => {
+      setClins(clins.filter(c => c.id !== clinId));
+      
+      // Remove pricing data for the deleted CLIN
+      const newPricing = { ...pricingData };
+      offerors.forEach(offeror => {
+        if (newPricing[offeror.id]) {
+          delete newPricing[offeror.id][clinId];
+        }
+      });
+      setPricingData(newPricing);
+    };
+
+    const updateClin = (clinId: number, field: string, value: string) => {
+      setClins(clins.map(clin => 
+        clin.id === clinId ? { ...clin, [field]: value } : clin
+      ));
+    };
+
     const addEvaluationPeriod = () => {
       const newId = Math.max(...evaluationPeriods.map(p => p.id), 0) + 1;
       const newPeriod = {
@@ -1555,24 +1600,40 @@ const ArcPortal = () => {
           <TabsContent value="clins">
             <Card>
               <CardHeader>
-                <CardTitle>Contract Line Items (CLINs)</CardTitle>
-                <CardDescription>CLINs from solicitation {solicitation.number}</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Contract Line Items (CLINs)</CardTitle>
+                    <CardDescription>Manage CLINs for solicitation {solicitation.number}</CardDescription>
+                  </div>
+                  <Button onClick={addClin} className="bg-green-600 hover:bg-green-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add CLIN
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {clins.map(clin => (
                   <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
                     <div className="w-32">
-                      <p className="font-medium">{clin.name}</p>
+                      <Input
+                        value={clin.name}
+                        onChange={(e) => updateClin(clin.id, 'name', e.target.value)}
+                        placeholder="CLIN Name"
+                        className="font-medium"
+                      />
                     </div>
                     <div className="flex-1">
-                      <p className="text-gray-700">{clin.description}</p>
+                      <Input
+                        value={clin.description}
+                        onChange={(e) => updateClin(clin.id, 'description', e.target.value)}
+                        placeholder="CLIN Description"
+                        className="text-gray-700"
+                      />
                     </div>
                     <div className="w-48">
                       <Select
                         value={clin.pricingModel}
-                        onValueChange={(value) => setClins(prev =>
-                          prev.map(c => c.id === clin.id ? { ...c, pricingModel: value } : c)
-                        )}
+                        onValueChange={(value) => updateClin(clin.id, 'pricingModel', value)}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1585,8 +1646,23 @@ const ArcPortal = () => {
                       </Select>
                     </div>
                     {getPricingModelBadge(clin.pricingModel)}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeClin(clin.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      disabled={clins.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
+                
+                {clins.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <p>No CLINs defined. Click "Add CLIN" to create your first contract line item.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
