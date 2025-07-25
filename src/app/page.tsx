@@ -1283,6 +1283,112 @@ const ArcPortal = () => {
           </div>
         </div>
 
+        {showEditSolicitation && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Solicitation</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-number">Solicitation Number</Label>
+                  <Input
+                    id="edit-number"
+                    value={editSolicitationData.number}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    placeholder="e.g., RFP-2024-001"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-agency">Agency</Label>
+                  <Input
+                    id="edit-agency"
+                    value={editSolicitationData.agency}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    placeholder="e.g., Department of Defense"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editSolicitationData.title}
+                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Enter solicitation title"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editSolicitationData.description}
+                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter detailed description"
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="edit-dueDate">Proposal Due Date</Label>
+                  <Input
+                    id="edit-dueDate"
+                    type="datetime-local"
+                    value={editSolicitationData.dueDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff</Label>
+                  <Input
+                    id="edit-questionCutoffDate"
+                    type="datetime-local"
+                    value={editSolicitationData.questionCutoffDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff</Label>
+                  <Input
+                    id="edit-proposalCutoffDate"
+                    type="datetime-local"
+                    value={editSolicitationData.proposalCutoffDate}
+                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setEditSolicitationData(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowEditSolicitation(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => updateSolicitation(editSolicitationData)}
+                  disabled={!editSolicitationData.number || !editSolicitationData.title || !editSolicitationData.description}
+                >
+                  Update Solicitation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
