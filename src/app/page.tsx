@@ -2523,7 +2523,11 @@ const ArcPortal = () => {
                       </div>
                       <div className="flex gap-2">
                         <Badge variant="outline">{proposal.status.replace('_', ' ').toUpperCase()}</Badge>
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedProposal(proposal)}
+                        >
                           <Eye className="h-4 w-4 mr-1" />
                           Review
                         </Button>
@@ -2970,6 +2974,150 @@ const ArcPortal = () => {
     );
   };
 
+  // Q&A Management Component (Admin only)
+  const QAManagement = () => {
+    const [answeringQuestion, setAnsweringQuestion] = useState<number | null>(null);
+    const [newAnswer, setNewAnswer] = useState('');
+
+    const handleAnswerQuestion = async (questionId: number, answer: string) => {
+      if (!answer.trim()) return;
+      await answerQuestion(questionId, answer);
+      setAnsweringQuestion(null);
+      setNewAnswer('');
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Q&A Management</h2>
+          <div className="flex gap-2">
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+              <Input placeholder="Search questions..." className="pl-10 w-64" />
+            </div>
+            <Button variant="outline">
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          {questions.map(question => {
+            const vendor = vendors.find(v => v.id === question.vendorId);
+            const solicitation = solicitations.find(s => s.id === question.solicitationId);
+            
+            return (
+              <Card key={question.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <Badge variant={question.status === 'pending' ? 'destructive' : 'default'}>
+                            {question.status}
+                          </Badge>
+                          <span className="text-sm text-gray-500">
+                            {solicitation?.number} - {solicitation?.title}
+                          </span>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <Label className="text-sm font-medium text-gray-600">Question from {vendor?.companyName || vendor?.name}</Label>
+                          <p className="text-sm mt-1 p-3 bg-gray-50 rounded border">{question.question}</p>
+                        </div>
+
+                        {question.answer && (
+                          <div className="mb-3">
+                            <Label className="text-sm font-medium text-gray-600">Admin Response</Label>
+                            <p className="text-sm mt-1 p-3 bg-blue-50 rounded border">{question.answer}</p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Asked: {question.dateAsked}
+                          </span>
+                          {question.dateAnswered && (
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Answered: {question.dateAnswered}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            {vendor?.email}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {question.status === 'pending' && (
+                      <div className="border-t pt-4">
+                        {answeringQuestion === question.id ? (
+                          <div className="space-y-3">
+                            <Label htmlFor={`answer-${question.id}`}>Your Response</Label>
+                            <Textarea
+                              id={`answer-${question.id}`}
+                              value={newAnswer}
+                              onChange={(e) => setNewAnswer(e.target.value)}
+                              placeholder="Type your response to this question..."
+                              rows={3}
+                            />
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={() => handleAnswerQuestion(question.id, newAnswer)}
+                                disabled={!newAnswer.trim()}
+                                size="sm"
+                              >
+                                <Send className="h-4 w-4 mr-2" />
+                                Send Response
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                  setAnsweringQuestion(null);
+                                  setNewAnswer('');
+                                }}
+                                size="sm"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button 
+                            onClick={() => setAnsweringQuestion(question.id)}
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Answer Question
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          
+          {questions.length === 0 && (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Questions Yet</h3>
+                <p className="text-gray-600">No vendors have submitted questions yet.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Main render logic for authenticated users
   const renderActiveView = () => {
     switch (activeView) {
@@ -2980,7 +3128,7 @@ const ArcPortal = () => {
       case 'proposals':
         return userType === 'admin' ? <ProposalReview /> : <MyProposalsView />;
       case 'questions':
-        return userType === 'admin' ? <ProposalReview /> : <Dashboard />;
+        return userType === 'admin' ? <QAManagement /> : <Dashboard />;
       case 'vendors':
         return userType === 'admin' ? <VendorsView /> : <Dashboard />;
       case 'profile':
