@@ -1,0 +1,133 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(VENDOR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Vendor-specific fields
+  companyName         String?
+  ueiNumber          String?
+  socioEconomicStatus String[]
+
+  // Relations
+  proposals Proposal[]
+  questions Question[]
+
+  @@map("users")
+}
+
+model Solicitation {
+  id          String   @id @default(cuid())
+  number      String   @unique
+  title       String
+  agency      String
+  description String
+  dueDate     DateTime
+  status      SolicitationStatus @default(OPEN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  clins     Clin[]
+  proposals Proposal[]
+  questions Question[]
+
+  @@map("solicitations")
+}
+
+model Clin {
+  id           String      @id @default(cuid())
+  name         String
+  description  String
+  pricingModel PricingModel
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  solicitationId String
+
+  @@map("clins")
+}
+
+model Proposal {
+  id             String         @id @default(cuid())
+  status         ProposalStatus @default(SUBMITTED)
+  submissionDate DateTime       @default(now())
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  vendor         User         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId       String
+  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  solicitationId String
+
+  @@map("proposals")
+}
+
+model Question {
+  id           String        @id @default(cuid())
+  question     String
+  answer       String?
+  status       QuestionStatus @default(PENDING)
+  dateAsked    DateTime      @default(now())
+  dateAnswered DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  vendor         User         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId       String
+  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  solicitationId String
+
+  @@map("questions")
+}
+
+enum UserRole {
+  VENDOR
+  ADMIN
+}
+
+enum SolicitationStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum PricingModel {
+  FFP // Firm Fixed Price
+  TM  // Time & Materials
+  CR  // Cost Reimbursable
+}
+
+enum ProposalStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  AWARDED
+  REJECTED
+}
+
+enum QuestionStatus {
+  PENDING
+  ANSWERED
+}
