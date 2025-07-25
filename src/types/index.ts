@@ -101,9 +101,13 @@ export interface SampleQuestion {
   vendorId: string;
   question: string;
   answer: string;
-  status: string;
+  status: 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED';
   dateAsked: string;
   dateAnswered: string;
+  dateSubmitted?: string;
+  datePosted?: string;
+  isQuestionDraft: boolean;
+  isAnswerDraft: boolean;
 }
 
 export interface SampleProposal {

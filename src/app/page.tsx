@@ -256,9 +256,13 @@ const ArcPortal = () => {
           vendorId: newQuestion.vendorId,
           question: newQuestion.question,
           answer: newQuestion.answer || '',
-          status: newQuestion.status.toLowerCase(),
+          status: newQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
           dateAsked: new Date(newQuestion.dateAsked).toISOString().split('T')[0],
-          dateAnswered: newQuestion.dateAnswered ? new Date(newQuestion.dateAnswered).toISOString().split('T')[0] : ''
+          dateAnswered: newQuestion.dateAnswered ? new Date(newQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: newQuestion.dateSubmitted ? new Date(newQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: newQuestion.datePosted ? new Date(newQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: newQuestion.isQuestionDraft || false,
+          isAnswerDraft: newQuestion.isAnswerDraft || true
         };
         
         setQuestions([...questions, formattedQuestion]);
@@ -295,9 +299,13 @@ const ArcPortal = () => {
           vendorId: updatedQuestion.vendorId,
           question: updatedQuestion.question,
           answer: updatedQuestion.answer || '',
-          status: updatedQuestion.status.toLowerCase(),
+          status: updatedQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
           dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
-          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : ''
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: updatedQuestion.dateSubmitted ? new Date(updatedQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: updatedQuestion.datePosted ? new Date(updatedQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: updatedQuestion.isQuestionDraft || false,
+          isAnswerDraft: updatedQuestion.isAnswerDraft || true
         };
         
         setQuestions(prev => prev.map(q => 
@@ -308,6 +316,212 @@ const ArcPortal = () => {
       }
     } catch (error) {
       console.error('Error answering question:', error);
+    }
+  };
+
+  // Edit question (vendor only, before cutoff)
+  const editQuestion = async (questionId: string, newQuestionText: string) => {
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: questionId,
+          question: newQuestionText,
+          action: 'edit_question',
+          vendorId: currentUser?.id
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        const formattedQuestion = {
+          id: updatedQuestion.id,
+          solicitationId: updatedQuestion.solicitationId,
+          vendorId: updatedQuestion.vendorId,
+          question: updatedQuestion.question,
+          answer: updatedQuestion.answer || '',
+          status: updatedQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
+          dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: updatedQuestion.dateSubmitted ? new Date(updatedQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: updatedQuestion.datePosted ? new Date(updatedQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: updatedQuestion.isQuestionDraft || false,
+          isAnswerDraft: updatedQuestion.isAnswerDraft || true
+        };
+        
+        setQuestions(prev => prev.map(q => 
+          q.id === questionId ? formattedQuestion : q
+        ));
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to edit question:', errorData);
+        alert(`Failed to edit question: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error editing question:', error);
+      alert('Network error while editing question');
+    }
+  };
+
+  // Submit question (vendor only, moves from draft to submitted)
+  const submitQuestionFromDraft = async (questionId: string, questionText: string) => {
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: questionId,
+          question: questionText,
+          action: 'submit_question',
+          vendorId: currentUser?.id
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        const formattedQuestion = {
+          id: updatedQuestion.id,
+          solicitationId: updatedQuestion.solicitationId,
+          vendorId: updatedQuestion.vendorId,
+          question: updatedQuestion.question,
+          answer: updatedQuestion.answer || '',
+          status: updatedQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
+          dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: updatedQuestion.dateSubmitted ? new Date(updatedQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: updatedQuestion.datePosted ? new Date(updatedQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: updatedQuestion.isQuestionDraft || false,
+          isAnswerDraft: updatedQuestion.isAnswerDraft || true
+        };
+        
+        setQuestions(prev => prev.map(q => 
+          q.id === questionId ? formattedQuestion : q
+        ));
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to submit question:', errorData);
+        alert(`Failed to submit question: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      alert('Network error while submitting question');
+    }
+  };
+
+  // Delete question (vendor only, draft questions before cutoff)
+  const deleteQuestion = async (questionId: string) => {
+    try {
+      const response = await fetch(`/api/questions?id=${questionId}&vendorId=${currentUser?.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setQuestions(prev => prev.filter(q => q.id !== questionId));
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to delete question:', errorData);
+        alert(`Failed to delete question: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      alert('Network error while deleting question');
+    }
+  };
+
+  // Draft answer (admin only)
+  const draftAnswer = async (questionId: string, answerText: string) => {
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: questionId,
+          answer: answerText,
+          action: 'draft_answer'
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        const formattedQuestion = {
+          id: updatedQuestion.id,
+          solicitationId: updatedQuestion.solicitationId,
+          vendorId: updatedQuestion.vendorId,
+          question: updatedQuestion.question,
+          answer: updatedQuestion.answer || '',
+          status: updatedQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
+          dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: updatedQuestion.dateSubmitted ? new Date(updatedQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: updatedQuestion.datePosted ? new Date(updatedQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: updatedQuestion.isQuestionDraft || false,
+          isAnswerDraft: updatedQuestion.isAnswerDraft || true
+        };
+        
+        setQuestions(prev => prev.map(q => 
+          q.id === questionId ? formattedQuestion : q
+        ));
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to draft answer:', errorData);
+        alert(`Failed to draft answer: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error drafting answer:', error);
+      alert('Network error while drafting answer');
+    }
+  };
+
+  // Post answer (admin only, makes answer public)
+  const postAnswer = async (questionId: string, answerText: string) => {
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: questionId,
+          answer: answerText,
+          action: 'post_answer'
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        const formattedQuestion = {
+          id: updatedQuestion.id,
+          solicitationId: updatedQuestion.solicitationId,
+          vendorId: updatedQuestion.vendorId,
+          question: updatedQuestion.question,
+          answer: updatedQuestion.answer || '',
+          status: updatedQuestion.status as 'DRAFT' | 'SUBMITTED' | 'ANSWERED' | 'POSTED',
+          dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : '',
+          dateSubmitted: updatedQuestion.dateSubmitted ? new Date(updatedQuestion.dateSubmitted).toISOString().split('T')[0] : undefined,
+          datePosted: updatedQuestion.datePosted ? new Date(updatedQuestion.datePosted).toISOString().split('T')[0] : undefined,
+          isQuestionDraft: updatedQuestion.isQuestionDraft || false,
+          isAnswerDraft: updatedQuestion.isAnswerDraft || true
+        };
+        
+        setQuestions(prev => prev.map(q => 
+          q.id === questionId ? formattedQuestion : q
+        ));
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to post answer:', errorData);
+        alert(`Failed to post answer: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error posting answer:', error);
+      alert('Network error while posting answer');
     }
   };
 
@@ -821,7 +1035,7 @@ const ArcPortal = () => {
                 <div className="flex items-center gap-3">
                   <MessageSquare className="h-8 w-8 text-orange-600" />
                   <div>
-                    <p className="text-2xl font-bold">{questions.filter(q => q.status === 'pending').length}</p>
+                    <p className="text-2xl font-bold">{questions.filter(q => q.status === 'SUBMITTED').length}</p>
                     <p className="text-sm text-gray-600">Pending Questions</p>
                   </div>
                 </div>
@@ -842,8 +1056,7 @@ const ArcPortal = () => {
                       <p className="text-sm font-medium">Question on {solicitations.find(s => s.id === q.solicitationId)?.number}</p>
                       <p className="text-xs text-gray-600">{q.question.substring(0, 100)}...</p>
                     </div>
-                    <Badge variant={q.status === 'answered' ? 'default' : 'secondary'}>
-                      {q.status}
+                        <Badge variant={q.status === 'POSTED' ? 'default' : 'secondary'}>                      {q.status}
                     </Badge>
                   </div>
                 ))}
@@ -1236,6 +1449,8 @@ const ArcPortal = () => {
     const solicitationQuestions = questions.filter(q => q.solicitationId === solicitation.id);
     const [newAnswer, setNewAnswer] = useState('');
     const [answeringQuestion, setAnsweringQuestion] = useState<string | null>(null);
+    const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+    const [editQuestionText, setEditQuestionText] = useState('');
 
     const handleSubmitQuestion = async () => {
       if (!newQuestion.trim()) return;
@@ -1582,17 +1797,104 @@ const ArcPortal = () => {
                           <p className="font-medium">Question #{index + 1}</p>
                           <p className="text-sm text-gray-600">Asked on {q.dateAsked}</p>
                         </div>
-                        <Badge variant={q.status === 'answered' ? 'default' : 'secondary'}>
-                          {q.status}
-                        </Badge>
-                      </div>
+                        {(() => {
+                          switch (q.status) {
+                            case 'DRAFT':
+                              return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-300">Draft</Badge>;
+                            case 'SUBMITTED':
+                              return <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">Submitted</Badge>;
+                            case 'ANSWERED':
+                              return <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-200">Draft Answer</Badge>;
+                            case 'POSTED':
+                              return <Badge variant="default" className="bg-green-50 text-green-700 border-green-200">Answered</Badge>;
+                            default:
+                              return <Badge variant="secondary">{q.status}</Badge>;
+                          }
+                        })()}                      </div>
                       
                       <div className="mb-3">
                         <Label className="text-sm font-medium text-gray-700">Question:</Label>
-                        <p className="mt-1">{q.question}</p>
+                        {editingQuestion === q.id ? (
+                          <div className="mt-2 space-y-2">
+                            <Textarea
+                              value={editQuestionText}
+                              onChange={(e) => setEditQuestionText(e.target.value)}
+                              rows={3}
+                            />
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                onClick={async () => {
+                                  await editQuestion(q.id, editQuestionText);
+                                  setEditingQuestion(null);
+                                  setEditQuestionText('');
+                                }}
+                                disabled={!editQuestionText.trim()}
+                              >
+                                Save Changes
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingQuestion(null);
+                                  setEditQuestionText('');
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-1 flex items-start justify-between">
+                            <p className="flex-1">{q.question}</p>
+                            {userType === 'vendor' && q.vendorId === currentUser?.id && q.status === 'DRAFT' && !isQuestionCutoffPassed(solicitation) && (
+                              <div className="flex gap-1 ml-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingQuestion(q.id);
+                                    setEditQuestionText(q.question);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={async () => {
+                                    if (confirm('Are you sure you want to delete this question?')) {
+                                      await deleteQuestion(q.id);
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
-                      {q.status === 'answered' && q.answer && (
+                      {/* Submit draft question button */}
+                      {userType === 'vendor' && q.vendorId === currentUser?.id && q.status === 'DRAFT' && !isQuestionCutoffPassed(solicitation) && editingQuestion !== q.id && (
+                        <div className="mb-3">
+                          <Button 
+                            size="sm"
+                            onClick={async () => {
+                              await submitQuestionFromDraft(q.id, q.question);
+                            }}
+                          >
+                            Submit Question
+                          </Button>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Once submitted, you cannot edit or delete this question.
+                          </p>
+                        </div>
+                      )}
+                      
+                      {q.status === 'POSTED' && q.answer && (
                         <div className="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
                           <Label className="text-sm font-medium text-blue-800">Answer:</Label>
                           <p className="mt-1 text-blue-900">{q.answer}</p>
@@ -1600,7 +1902,37 @@ const ArcPortal = () => {
                         </div>
                       )}
                       
-                      {userType === 'admin' && q.status === 'pending' && (
+                      {/* Admin draft answer display */}
+                      {userType === 'admin' && q.status === 'ANSWERED' && q.isAnswerDraft && q.answer && (
+                        <div className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
+                          <Label className="text-sm font-medium text-yellow-800">Draft Answer:</Label>
+                          <p className="mt-1 text-yellow-900">{q.answer}</p>
+                          <p className="text-xs text-yellow-600 mt-2">Draft saved on {q.dateAnswered}</p>
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                await postAnswer(q.id, q.answer);
+                              }}
+                            >
+                              Post Answer
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setAnsweringQuestion(q.id);
+                                setNewAnswer(q.answer);
+                              }}
+                            >
+                              Edit Draft
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Admin answer form */}
+                      {userType === 'admin' && (q.status === 'SUBMITTED' || (q.status === 'ANSWERED' && answeringQuestion === q.id)) && (
                         <div className="mt-3 space-y-2">
                           <Textarea
                             value={answeringQuestion === q.id ? newAnswer : ''}
@@ -1609,21 +1941,45 @@ const ArcPortal = () => {
                               setNewAnswer(e.target.value);
                             }}
                             placeholder="Enter your answer..."
-                            rows={2}
+                            rows={3}
                           />
-                          <Button
-                            size="sm"
-                            onClick={async () => {
-                              await answerQuestion(q.id, newAnswer);
-                              setNewAnswer('');
-                              setAnsweringQuestion(null);
-                              // Keep the user on the Q&A tab after answering
-                              setActiveTab('questions');
-                            }}
-                            disabled={!newAnswer.trim()}
-                          >
-                            Post Answer
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={async () => {
+                                await draftAnswer(q.id, newAnswer);
+                                setNewAnswer('');
+                                setAnsweringQuestion(null);
+                              }}
+                              disabled={!newAnswer.trim()}
+                            >
+                              Save Draft
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                await postAnswer(q.id, newAnswer);
+                                setNewAnswer('');
+                                setAnsweringQuestion(null);
+                              }}
+                              disabled={!newAnswer.trim()}
+                            >
+                              Post Answer
+                            </Button>
+                            {answeringQuestion === q.id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setAnsweringQuestion(null);
+                                  setNewAnswer('');
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3461,7 +3817,7 @@ const ArcPortal = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <Badge variant={question.status === 'pending' ? 'destructive' : 'default'}>
+                          <Badge variant={question.status === 'SUBMITTED' ? 'destructive' : 'default'}>
                             {question.status}
                           </Badge>
                           <span className="text-sm text-gray-500">
@@ -3500,7 +3856,7 @@ const ArcPortal = () => {
                       </div>
                     </div>
 
-                    {question.status === 'pending' && (
+                    {question.status === 'SUBMITTED' && (
                       <div className="border-t pt-4">
                         {answeringQuestion === question.id ? (
                           <div className="space-y-3">

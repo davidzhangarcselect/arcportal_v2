@@ -74,9 +74,13 @@ model Question {
   id             String         @id @default(cuid())
   question       String
   answer         String?
-  status         QuestionStatus @default(PENDING)
+  status         QuestionStatus @default(DRAFT)
   dateAsked      DateTime       @default(now())
   dateAnswered   DateTime?
+  dateSubmitted  DateTime?
+  datePosted     DateTime?
+  isQuestionDraft Boolean       @default(true)
+  isAnswerDraft   Boolean       @default(true)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   vendorId       String
@@ -112,6 +116,8 @@ enum ProposalStatus {
 }
 
 enum QuestionStatus {
-  PENDING
+  DRAFT
+  SUBMITTED
   ANSWERED
+  POSTED
 }
