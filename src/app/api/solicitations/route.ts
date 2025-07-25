@@ -68,6 +68,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
+    console.log('PUT request body:', JSON.stringify(body, null, 2))
     const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins } = body
 
     if (!id) {
@@ -80,19 +81,25 @@ export async function PUT(request: Request) {
     // Handle CLINs update if provided
     let clinUpdateData = {}
     if (clins) {
+      console.log('Processing CLINs:', JSON.stringify(clins, null, 2))
+      
       // Delete existing CLINs and create new ones
-      await prisma.clin.deleteMany({
+      const deleteResult = await prisma.clin.deleteMany({
         where: { solicitationId: id }
       })
+      console.log('Deleted CLINs:', deleteResult.count)
+      
+      const clinData = clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
+        name: clin.name,
+        description: clin.description,
+        pricingModel: clin.pricingModel,
+        periodId: clin.periodId
+      }))
+      console.log('CLIN data to create:', JSON.stringify(clinData, null, 2))
       
       clinUpdateData = {
         clins: {
-          create: clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
-            name: clin.name,
-            description: clin.description,
-            pricingModel: clin.pricingModel,
-            periodId: clin.periodId
-          }))
+          create: clinData
         }
       }
     }
@@ -131,7 +138,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error('Error updating solicitation:', error)
     return NextResponse.json(
-      { error: 'Failed to update solicitation' },
+      { error: 'Failed to update solicitation', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
