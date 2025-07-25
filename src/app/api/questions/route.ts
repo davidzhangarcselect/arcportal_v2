@@ -73,3 +73,43 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, answer } = body
+
+    const updatedQuestion = await prisma.question.update({
+      where: { id },
+      data: {
+        answer,
+        status: 'ANSWERED',
+        dateAnswered: new Date()
+      },
+      include: {
+        vendor: {
+          select: {
+            id: true,
+            companyName: true,
+            email: true
+          }
+        },
+        solicitation: {
+          select: {
+            id: true,
+            number: true,
+            title: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(updatedQuestion)
+  } catch (error) {
+    console.error('Error updating question:', error)
+    return NextResponse.json(
+      { error: 'Failed to update question' },
+      { status: 500 }
+    )
+  }
+}

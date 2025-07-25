@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         description,
         dueDate: new Date(dueDate),
         clins: {
-          create: clins?.map((clin: any) => ({
+          create: clins?.map((clin: { name: string; description: string; pricingModel: string }) => ({
             name: clin.name,
             description: clin.description,
             pricingModel: clin.pricingModel

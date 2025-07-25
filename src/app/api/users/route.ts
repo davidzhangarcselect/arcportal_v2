@@ -44,3 +44,29 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { email } = body
+
+    const user = await prisma.user.findUnique({
+      where: { email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error('Error finding user:', error)
+    return NextResponse.json(
+      { error: 'Failed to find user' },
+      { status: 500 }
+    )
+  }
+}

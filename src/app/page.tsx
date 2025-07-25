@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Trash2, Download, Upload, FileText, Calendar, Building2, Users,
-  MessageSquare, Send, Eye, Check, Clock, AlertCircle, Calculator,
-  User, Settings, LogOut, Bell, Search, Filter, CheckCircle2
+  MessageSquare, Send, Eye, Clock, AlertCircle, Calculator,
+  User, LogOut, Bell, Search, Filter, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { SampleSolicitation, SampleQuestion, SampleProposal, SampleUser } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,6 @@ const ArcPortal = () => {
   const [activeView, setActiveView] = useState('dashboard');
   const [selectedSolicitation, setSelectedSolicitation] = useState<SampleSolicitation | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<SampleProposal | null>(null);
-  const [isModifyingProposal, setIsModifyingProposal] = useState(false);
   const [solicitationActiveTab, setSolicitationActiveTab] = useState('overview');
   
   // Data states
@@ -33,60 +32,83 @@ const ArcPortal = () => {
   const [solicitations, setSolicitations] = useState<SampleSolicitation[]>([]);
   const [proposals, setProposals] = useState<SampleProposal[]>([]);
   const [questions, setQuestions] = useState<SampleQuestion[]>([]);
+  
+  // Shared proposal data state
+  const [proposalData, setProposalData] = useState({
+    solicitationId: 0,
+    vendorId: 0,
+    technicalFiles: [] as any[],
+    pastPerformanceFiles: [] as any[],
+    pricingData: {},
+    notes: ''
+  });
 
-  // Initialize sample data
+  // Load data from database
   useEffect(() => {
-    const sampleSolicitations = [
-      {
-        id: 1,
-        number: 'RFP-2025-001',
-        title: 'Enterprise Software Development Services',
-        agency: 'Department of Technology',
-        dueDate: '2025-08-15',
-        description: 'Seeking qualified vendors for enterprise software development and maintenance services.',
-        status: 'open',
-        attachments: [
-          { name: 'Statement of Work.pdf', size: '2.3 MB' },
-          { name: 'Technical Requirements.docx', size: '1.1 MB' }
-        ],
-        clins: [
-          { id: 1, name: 'CLIN 0001', description: 'Software Development Services', pricingModel: 'T&M' },
-          { id: 2, name: 'CLIN 0002', description: 'Maintenance & Support', pricingModel: 'FFP' }
-        ]
-      },
-      {
-        id: 2,
-        number: 'RFP-2025-002', 
-        title: 'Cybersecurity Consulting Services',
-        agency: 'Department of Defense',
-        dueDate: '2025-09-01',
-        description: 'Comprehensive cybersecurity assessment and consulting services.',
-        status: 'open',
-        attachments: [
-          { name: 'Security Requirements.pdf', size: '3.1 MB' }
-        ],
-        clins: [
-          { id: 3, name: 'CLIN 0001', description: 'Security Assessment', pricingModel: 'FFP' }
-        ]
-      }
-    ];
+    const loadData = async () => {
+      try {
+        // Load solicitations
+        const solicitationsResponse = await fetch('/api/solicitations');
+        if (solicitationsResponse.ok) {
+          const solicitationsData = await solicitationsResponse.json();
+          setSolicitations(solicitationsData.map((s: any) => ({
+            ...s,
+            dueDate: new Date(s.dueDate).toISOString().split('T')[0],
+            status: s.status.toLowerCase(),
+            attachments: [
+              { name: 'Statement of Work.pdf', size: '2.3 MB' },
+              { name: 'Technical Requirements.docx', size: '1.1 MB' }
+            ]
+          })));
+        }
 
-    const sampleQuestions = [
-      {
-        id: 1,
-        solicitationId: 1,
-        vendorId: 1,
-        question: 'What is the expected timeline for project deliverables?',
-        answer: 'The project timeline is 18 months with quarterly deliverables.',
-        status: 'answered',
-        dateAsked: '2025-07-01',
-        dateAnswered: '2025-07-03'
-      }
-    ];
+        // Load questions
+        const questionsResponse = await fetch('/api/questions');
+        if (questionsResponse.ok) {
+          const questionsData = await questionsResponse.json();
+          setQuestions(questionsData.map((q: any) => ({
+            id: q.id,
+            solicitationId: q.solicitationId,
+            vendorId: q.vendorId,
+            question: q.question,
+            answer: q.answer || '',
+            status: q.status.toLowerCase(),
+            dateAsked: new Date(q.dateAsked).toISOString().split('T')[0],
+            dateAnswered: q.dateAnswered ? new Date(q.dateAnswered).toISOString().split('T')[0] : ''
+          })));
+        }
 
-    setSolicitations(sampleSolicitations);
-    setQuestions(sampleQuestions);
+        // Load proposals
+        const proposalsResponse = await fetch('/api/proposals');
+        if (proposalsResponse.ok) {
+          const proposalsData = await proposalsResponse.json();
+          setProposals(proposalsData.map((p: any) => ({
+            id: p.id,
+            solicitationId: p.solicitationId,
+            vendorId: p.vendorId,
+            submissionDate: new Date(p.submissionDate).toISOString().split('T')[0],
+            status: p.status.toLowerCase(),
+            notes: p.notes || ''
+          })));
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
   }, []);
+
+  // Update proposal data when solicitation changes
+  useEffect(() => {
+    if (selectedSolicitation) {
+      setProposalData((prev: any) => ({
+        ...prev,
+        solicitationId: selectedSolicitation.id,
+        vendorId: currentUser?.id || 0
+      }));
+    }
+  }, [selectedSolicitation]);
 
   // Authentication
   const login = (userData: SampleUser, type: 'vendor' | 'admin') => {
@@ -116,48 +138,141 @@ const ArcPortal = () => {
   };
 
   // Question submission
-  const submitQuestion = (solicitationId: number, questionText: string) => {
-    if (!questionText.trim() || !currentUser) return;
+  const submitQuestion = async (solicitationId: number, questionText: string) => {
+    if (!questionText.trim()) {
+      console.error('Question text is empty');
+      return;
+    }
     
-    const question: SampleQuestion = {
-      id: Math.max(...questions.map(q => q.id), 0) + 1,
-      solicitationId,
-      vendorId: currentUser.id,
+    if (!currentUser) {
+      console.error('No current user logged in');
+      alert('Please log in to submit a question');
+      return;
+    }
+    
+    console.log('Submitting question:', {
       question: questionText,
-      answer: '',
-      status: 'pending',
-      dateAsked: new Date().toISOString().split('T')[0],
-      dateAnswered: ''
-    };
+      vendorId: currentUser.id,
+      solicitationId: solicitationId,
+      currentUser: currentUser
+    });
     
-    setQuestions([...questions, question]);
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: questionText,
+          vendorId: currentUser.id,
+          solicitationId: solicitationId
+        }),
+      });
+
+      console.log('Response status:', response.status);
+      
+      if (response.ok) {
+        const newQuestion = await response.json();
+        console.log('New question created:', newQuestion);
+        
+        const formattedQuestion = {
+          id: newQuestion.id,
+          solicitationId: newQuestion.solicitationId,
+          vendorId: newQuestion.vendorId,
+          question: newQuestion.question,
+          answer: newQuestion.answer || '',
+          status: newQuestion.status.toLowerCase(),
+          dateAsked: new Date(newQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: newQuestion.dateAnswered ? new Date(newQuestion.dateAnswered).toISOString().split('T')[0] : ''
+        };
+        
+        setQuestions([...questions, formattedQuestion]);
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to submit question. Status:', response.status, 'Error:', errorData);
+        alert(`Failed to submit question: ${errorData}`);
+      }
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      alert('Network error while submitting question');
+    }
   };
 
   // Admin question answering
-  const answerQuestion = (questionId: number, answer: string) => {
-    setQuestions(prev => prev.map(q => 
-      q.id === questionId 
-        ? { ...q, answer, status: 'answered', dateAnswered: new Date().toISOString().split('T')[0] }
-        : q
-    ));
+  const answerQuestion = async (questionId: number, answer: string) => {
+    try {
+      const response = await fetch('/api/questions', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: questionId,
+          answer: answer
+        }),
+      });
+
+      if (response.ok) {
+        const updatedQuestion = await response.json();
+        const formattedQuestion = {
+          id: updatedQuestion.id,
+          solicitationId: updatedQuestion.solicitationId,
+          vendorId: updatedQuestion.vendorId,
+          question: updatedQuestion.question,
+          answer: updatedQuestion.answer || '',
+          status: updatedQuestion.status.toLowerCase(),
+          dateAsked: new Date(updatedQuestion.dateAsked).toISOString().split('T')[0],
+          dateAnswered: updatedQuestion.dateAnswered ? new Date(updatedQuestion.dateAnswered).toISOString().split('T')[0] : ''
+        };
+        
+        setQuestions(prev => prev.map(q => 
+          q.id === questionId ? formattedQuestion : q
+        ));
+      } else {
+        console.error('Failed to answer question');
+      }
+    } catch (error) {
+      console.error('Error answering question:', error);
+    }
   };
 
   // Proposal submission
-  const submitProposal = (proposalData: Partial<SampleProposal>) => {
-    const proposal: SampleProposal = {
-      id: Math.max(...proposals.map(p => p.id), 0) + 1,
-      solicitationId: proposalData.solicitationId || 0,
-      vendorId: proposalData.vendorId || 0,
-      submissionDate: new Date().toISOString().split('T')[0],
-      status: 'submitted',
-      ...proposalData
-    };
-    setProposals([...proposals, proposal]);
-    
-    setSelectedSolicitation(null);
-    setActiveView('proposals');
-    
-    return proposal;
+  const submitProposal = async (proposalData: Partial<SampleProposal>) => {
+    try {
+      const response = await fetch('/api/proposals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vendorId: proposalData.vendorId || currentUser?.id,
+          solicitationId: proposalData.solicitationId,
+          notes: proposalData.notes || ''
+        }),
+      });
+
+      if (response.ok) {
+        const newProposal = await response.json();
+        const formattedProposal = {
+          id: newProposal.id,
+          solicitationId: newProposal.solicitationId,
+          vendorId: newProposal.vendorId,
+          submissionDate: new Date(newProposal.submissionDate).toISOString().split('T')[0],
+          status: newProposal.status.toLowerCase(),
+          notes: newProposal.notes || ''
+        };
+        
+        setProposals([...proposals, formattedProposal]);
+        return formattedProposal;
+      } else {
+        console.error('Failed to submit proposal');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      return null;
+    }
   };
 
   // Update proposal
@@ -165,7 +280,6 @@ const ArcPortal = () => {
     setProposals(prev => prev.map(p => 
       p.id === proposalId ? { ...p, ...updatedData } : p
     ));
-    setIsModifyingProposal(false);
     setSelectedProposal(null);
   };
 
@@ -192,14 +306,42 @@ const ArcPortal = () => {
         'Minority-Owned Business'
       ];
 
-      const handleSubmit = () => {
+      const handleSubmit = async () => {
         if (isRegistering && loginType === 'vendor') {
           registerVendor(formData);
         } else {
-          const userData: SampleUser = loginType === 'admin' 
-            ? { id: 1, name: 'Admin User', email: formData.email, socioEconomicStatus: [] }
-            : { id: 1, companyName: formData.companyName || 'Demo Vendor', email: formData.email, socioEconomicStatus: [] };
-          login(userData, loginType as 'vendor' | 'admin');
+          try {
+            const response = await fetch('/api/users', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: formData.email
+              }),
+            });
+
+            if (response.ok) {
+              const userData = await response.json();
+              const formattedUser = {
+                id: userData.id,
+                name: userData.name,
+                email: userData.email,
+                companyName: userData.companyName,
+                ueiNumber: userData.ueiNumber,
+                socioEconomicStatus: userData.socioEconomicStatus || [],
+                registrationDate: userData.createdAt ? new Date(userData.createdAt).toISOString().split('T')[0] : ''
+              };
+              
+              const userRole = userData.role.toLowerCase() as 'vendor' | 'admin';
+              login(formattedUser, userRole);
+            } else {
+              alert('User not found. Please check your email or register as a new vendor.');
+            }
+          } catch (error) {
+            console.error('Login error:', error);
+            alert('Login failed. Please try again.');
+          }
         }
       };
 
@@ -295,6 +437,20 @@ const ArcPortal = () => {
                 <Button onClick={handleSubmit} className="w-full">
                   {isRegistering ? 'Register' : 'Login'}
                 </Button>
+
+                {!isRegistering && (
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm font-medium text-blue-800 mb-2">Sample Credentials:</p>
+                    <div className="text-xs text-blue-700 space-y-1">
+                      {loginType === 'vendor' ? (
+                        <p><strong>Vendor:</strong> vendor@techcorp.com</p>
+                      ) : (
+                        <p><strong>Admin:</strong> admin@arcportal.gov</p>
+                      )}
+                      <p className="text-blue-600">Password: (any password works for demo)</p>
+                    </div>
+                  </div>
+                )}
 
                 {loginType === 'vendor' && (
                   <Button
@@ -611,6 +767,8 @@ const ArcPortal = () => {
     );
   };
 
+
+
   // Solicitation Detail Component
   const SolicitationDetail = ({ solicitation, activeTab, setActiveTab }: { solicitation: SampleSolicitation, activeTab: string, setActiveTab: (tab: string) => void }) => {
     const [newQuestion, setNewQuestion] = useState('');
@@ -618,9 +776,9 @@ const ArcPortal = () => {
     const [newAnswer, setNewAnswer] = useState('');
     const [answeringQuestion, setAnsweringQuestion] = useState<number | null>(null);
 
-    const handleSubmitQuestion = () => {
+    const handleSubmitQuestion = async () => {
       if (!newQuestion.trim()) return;
-      submitQuestion(solicitation.id, newQuestion);
+      await submitQuestion(solicitation.id, newQuestion);
       setNewQuestion('');
       // Keep the user on the Q&A tab after submitting
       setActiveTab('questions');
@@ -647,7 +805,12 @@ const ArcPortal = () => {
             <TabsTrigger value="attachments">Attachments</TabsTrigger>
             <TabsTrigger value="questions">Q&A</TabsTrigger>
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
-            {userType === 'vendor' && <TabsTrigger value="proposal">Submit Proposal</TabsTrigger>}
+            {userType === 'vendor' && (
+              <>
+                <TabsTrigger value="proposal-attachments">Proposal Attachments</TabsTrigger>
+                <TabsTrigger value="submit">Submit Proposal</TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -761,11 +924,11 @@ const ArcPortal = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {solicitationQuestions.map(q => (
+                  {solicitationQuestions.map((q, index) => (
                     <div key={q.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <p className="font-medium">Question #{q.id}</p>
+                          <p className="font-medium">Question #{index + 1}</p>
                           <p className="text-sm text-gray-600">Asked on {q.dateAsked}</p>
                         </div>
                         <Badge variant={q.status === 'answered' ? 'default' : 'secondary'}>
@@ -799,8 +962,8 @@ const ArcPortal = () => {
                           />
                           <Button
                             size="sm"
-                            onClick={() => {
-                              answerQuestion(q.id, newAnswer);
+                            onClick={async () => {
+                              await answerQuestion(q.id, newAnswer);
                               setNewAnswer('');
                               setAnsweringQuestion(null);
                               // Keep the user on the Q&A tab after answering
@@ -828,26 +991,27 @@ const ArcPortal = () => {
           </TabsContent>
 
           {userType === 'vendor' && (
-            <TabsContent value="proposal" className="space-y-4">
-              <ProposalSubmission solicitation={solicitation} onSubmit={submitProposal} />
-            </TabsContent>
+            <>
+              <TabsContent value="proposal-attachments" className="space-y-4">
+                <ProposalAttachments solicitation={solicitation} proposalData={proposalData} setProposalData={setProposalData} setActiveTab={setActiveTab} />
+              </TabsContent>
+              <TabsContent value="submit" className="space-y-4">
+                <ProposalSubmission solicitation={solicitation} proposalData={proposalData} onSubmit={submitProposal} setActiveTab={setActiveTab} />
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </div>
     );
   };
 
-  // Proposal Submission Component
-  const ProposalSubmission = ({ solicitation, onSubmit }: { solicitation: SampleSolicitation, onSubmit: (data: any) => any }) => {
-    const [proposalData, setProposalData] = useState({
-      solicitationId: solicitation.id,
-      vendorId: currentUser?.id || 0,
-      technicalFiles: [] as any[],
-      pastPerformanceFiles: [] as any[],
-      pricingData: {},
-      notes: ''
-    });
-
+  // Proposal Attachments Component
+  const ProposalAttachments = ({ solicitation, proposalData, setProposalData, setActiveTab }: { 
+    solicitation: SampleSolicitation, 
+    proposalData: any, 
+    setProposalData: (data: any) => void,
+    setActiveTab: (tab: string) => void
+  }) => {
     const handleFileUpload = (type: string, files: FileList | null) => {
       if (!files) return;
       const fileList = Array.from(files).map(file => ({
@@ -856,24 +1020,18 @@ const ArcPortal = () => {
         type: file.type
       }));
       
-      setProposalData(prev => ({
+      setProposalData((prev: any) => ({
         ...prev,
         [type]: [...prev[type as keyof typeof prev] as any[], ...fileList]
       }));
     };
 
-    const handleSubmit = () => {
-      const submittedProposal = onSubmit(proposalData);
-      
-      alert(`Proposal #${submittedProposal.id} submitted successfully!\n\nSubmission Details:\n- Technical Files: ${proposalData.technicalFiles.length}\n- Past Performance Files: ${proposalData.pastPerformanceFiles.length}\n- Status: Under Review\n\nYou can track your proposal status in the "My Proposals" section.`);
-    };
-
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Submit Proposal</CardTitle>
+          <CardTitle>Proposal Attachments</CardTitle>
           <CardDescription>
-            Submit your proposal for {solicitation.number}
+            Upload your proposal documents for {solicitation.number}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -897,7 +1055,7 @@ const ArcPortal = () => {
               </div>
               {proposalData.technicalFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {proposalData.technicalFiles.map((file, index) => (
+                  {proposalData.technicalFiles.map((file: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                       <FileText className="h-4 w-4" />
                       {file.name} ({file.size})
@@ -926,7 +1084,7 @@ const ArcPortal = () => {
               </div>
               {proposalData.pastPerformanceFiles.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {proposalData.pastPerformanceFiles.map((file, index) => (
+                  {proposalData.pastPerformanceFiles.map((file: any, index: number) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                       <FileText className="h-4 w-4" />
                       {file.name} ({file.size})
@@ -952,7 +1110,7 @@ const ArcPortal = () => {
               <Textarea
                 id="notes"
                 value={proposalData.notes}
-                onChange={(e) => setProposalData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) => setProposalData((prev: any) => ({ ...prev, notes: e.target.value }))}
                 placeholder="Any additional information or notes..."
                 rows={3}
               />
@@ -963,11 +1121,170 @@ const ArcPortal = () => {
 
           <div className="flex justify-end gap-3">
             <Button variant="outline">Save Draft</Button>
-            <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Submit Proposal
+            <Button onClick={() => setActiveTab('submit')}>
+              Continue to Submit →
             </Button>
           </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  // Proposal Submission Component (Summary & Confirmation)
+  const ProposalSubmission = ({ solicitation, proposalData, onSubmit, setActiveTab }: { 
+    solicitation: SampleSolicitation, 
+    proposalData: any, 
+    onSubmit: (data: any) => any,
+    setActiveTab: (tab: string) => void
+  }) => {
+    const [showConfirmation, setShowConfirmation] = useState(false);
+
+    const handleSubmit = async () => {
+      const submittedProposal = await onSubmit(proposalData);
+      
+      if (submittedProposal) {
+        alert(`Proposal #${submittedProposal.id} submitted successfully!\n\nSubmission Details:\n- Technical Files: ${proposalData.technicalFiles.length}\n- Past Performance Files: ${proposalData.pastPerformanceFiles.length}\n- Status: Under Review\n\nYou can track your proposal status in the "My Proposals" section.`);
+        setShowConfirmation(false);
+      } else {
+        alert('Failed to submit proposal. Please try again.');
+      }
+    };
+
+    const totalFiles = proposalData.technicalFiles.length + proposalData.pastPerformanceFiles.length;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Submit Proposal</CardTitle>
+          <CardDescription>
+            Review and confirm your proposal submission for {solicitation.number}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg border">
+              <h3 className="font-medium text-blue-900 mb-3">Proposal Summary</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-blue-800">Solicitation</Label>
+                  <p className="font-medium">{solicitation.number}</p>
+                </div>
+                <div>
+                  <Label className="text-blue-800">Company</Label>
+                  <p className="font-medium">{currentUser?.companyName || 'Your Company'}</p>
+                </div>
+                <div>
+                  <Label className="text-blue-800">Total Attachments</Label>
+                  <p className="font-medium">{totalFiles} files</p>
+                </div>
+                <div>
+                  <Label className="text-blue-800">Due Date</Label>
+                  <p className="font-medium">{solicitation.dueDate}</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-base font-medium">Technical Proposal Files</Label>
+              {proposalData.technicalFiles.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {proposalData.technicalFiles.map((file: any, index: number) => (
+                    <div key={index} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      {file.name} ({file.size})
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-red-600 mt-1">⚠️ No technical proposal files uploaded</p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-base font-medium">Past Performance Files</Label>
+              {proposalData.pastPerformanceFiles.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {proposalData.pastPerformanceFiles.map((file: any, index: number) => (
+                    <div key={index} className="flex items-center gap-2 text-sm bg-gray-50 p-2 rounded">
+                      <FileText className="h-4 w-4 text-green-600" />
+                      {file.name} ({file.size})
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-red-600 mt-1">⚠️ No past performance files uploaded</p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-base font-medium">Cost Proposal</Label>
+              <Alert>
+                <Calculator className="h-4 w-4" />
+                <AlertDescription>
+                  Pricing data from the Price Evaluation tool will be included automatically.
+                </AlertDescription>
+              </Alert>
+            </div>
+
+            {proposalData.notes && (
+              <div>
+                <Label className="text-base font-medium">Additional Notes</Label>
+                <div className="mt-1 p-3 bg-gray-50 rounded border">
+                  <p className="text-sm">{proposalData.notes}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+              <div>
+                <h4 className="font-medium text-yellow-800">Important Notice</h4>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Once submitted, your proposal cannot be modified. Please review all information carefully before proceeding.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between gap-3">
+            <Button variant="outline" onClick={() => setActiveTab('proposal-attachments')}>
+              ← Back to Attachments
+            </Button>
+            <div className="flex gap-3">
+              <Button variant="outline">Save Draft</Button>
+              <Button 
+                onClick={() => setShowConfirmation(true)} 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={totalFiles === 0}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Submit Proposal
+              </Button>
+            </div>
+          </div>
+
+          {showConfirmation && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                <h3 className="text-lg font-semibold mb-4">Confirm Proposal Submission</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to submit your proposal for {solicitation.number}? This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <Button variant="outline" onClick={() => setShowConfirmation(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
+                    Yes, Submit Proposal
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -1592,7 +1909,6 @@ const ArcPortal = () => {
                               variant="outline"
                               onClick={() => {
                                 setSelectedProposal(proposal);
-                                setIsModifyingProposal(true);
                               }}
                             >
                               <FileText className="h-4 w-4 mr-1" />
