@@ -2335,10 +2335,11 @@ const ArcPortal = () => {
       periodClins: {},
       evaluationPeriods: []
     });
+    const [justSaved, setJustSaved] = useState(false);
 
     // Initialize with solicitation data
     useEffect(() => {
-      if (solicitation && currentUser) {
+      if (solicitation && currentUser && !justSaved) {
         // Load evaluation periods from solicitation or use defaults
         const periods = solicitation.evaluationPeriods || [
           { id: 'base_year_1', name: 'Base Year', type: 'base' }
@@ -2403,7 +2404,7 @@ const ArcPortal = () => {
         });
         setPricingData(initialPricing);
       }
-    }, [solicitation, currentUser]);
+    }, [solicitation, currentUser, justSaved]);
 
     // Track changes for unsaved changes indicator
     useEffect(() => {
@@ -2445,6 +2446,9 @@ const ArcPortal = () => {
         if (response.ok) {
           const updatedSolicitation = await response.json();
           
+          // Set flag to prevent useEffect from resetting state
+          setJustSaved(true);
+          
           // Update the original setup to reflect saved state
           setOriginalSetup({
             periodClins: JSON.parse(JSON.stringify(periodClins)),
@@ -2452,14 +2456,16 @@ const ArcPortal = () => {
           });
           setHasUnsavedChanges(false);
           
-          // Update the solicitation in the parent state
+          // Update the solicitation in the parent state with the full updated solicitation
           setSolicitations(prev => prev.map(s => 
             s.id === solicitation.id ? {
-              ...s,
-              clins: updatedSolicitation.clins,
+              ...updatedSolicitation,
               evaluationPeriods: evaluationPeriods
             } : s
           ));
+          
+          // Clear the flag after a short delay
+          setTimeout(() => setJustSaved(false), 100);
           
           alert('Setup saved successfully!');
         } else {
