@@ -267,7 +267,8 @@ const ArcPortal = () => {
           agency: newSolicitation.agency,
           dueDate: newSolicitation.dueDate,
           status: newSolicitation.status as 'open' | 'closed',
-          attachments: []
+          attachments: [],
+          clins: newSolicitation.clins || []
         };
         
         setSolicitations(prev => [formattedSolicitation, ...prev]);
