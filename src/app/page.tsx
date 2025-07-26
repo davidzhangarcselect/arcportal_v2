@@ -2150,12 +2150,20 @@ const ArcPortal = () => {
             <div>
               <Label className="text-base font-medium">Pricing Summary</Label>
               <p className="text-sm text-gray-600 mb-3">Complete your pricing using the integrated tool</p>
-              <Alert>
-                <Calculator className="h-4 w-4" />
-                <AlertDescription>
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-800">Total Price:</span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-800">
+                    ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </span>
+                </div>
+                <p className="text-sm text-blue-700">
                   Your pricing data from the Price Evaluation tool will be automatically included in your proposal submission.
-                </AlertDescription>
-              </Alert>
+                </p>
+              </div>
             </div>
 
             <div>
@@ -2271,12 +2279,20 @@ const ArcPortal = () => {
 
             <div>
               <Label className="text-base font-medium">Pricing Summary</Label>
-              <Alert>
-                <Calculator className="h-4 w-4" />
-                <AlertDescription>
-                  Pricing data from the Price Evaluation tool will be included automatically.
-                </AlertDescription>
-              </Alert>
+              <div className="mt-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5 text-blue-600" />
+                    <span className="font-medium text-blue-800">Total Price:</span>
+                  </div>
+                  <span className="text-xl font-bold text-blue-800">
+                    ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </span>
+                </div>
+                <p className="text-sm text-blue-700 mt-2">
+                  Pricing data from the Price Evaluation tool is included automatically.
+                </p>
+              </div>
             </div>
 
             {proposalData.notes && (
@@ -3175,7 +3191,7 @@ const ArcPortal = () => {
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="text-lg font-semibold text-blue-800">
                   <Calculator className="h-5 w-5 inline mr-2" />
-                  Total Evaluated Price: ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  Total Price: ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </div>
               </div>
 
