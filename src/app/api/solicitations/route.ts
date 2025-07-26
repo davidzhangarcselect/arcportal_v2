@@ -95,19 +95,26 @@ export async function PUT(request: Request) {
     // Handle CLINs update if provided
     let clinUpdateData = {}
     if (clins) {
+      console.log('🗑️ About to delete existing CLINs for solicitation:', id);
+      
       // Delete existing CLINs and create new ones
-      await prisma.clin.deleteMany({
+      const deleteResult = await prisma.clin.deleteMany({
         where: { solicitationId: id }
       })
+      console.log('✅ Deleted', deleteResult.count, 'existing CLINs');
+      
+      const newClins = clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
+        name: clin.name,
+        description: clin.description,
+        pricingModel: clin.pricingModel,
+        periodId: clin.periodId
+      }));
+      
+      console.log('📝 About to create', newClins.length, 'new CLINs:', newClins);
       
       clinUpdateData = {
         clins: {
-          create: clins.map((clin: { name: string; description: string; pricingModel: string; periodId: string }) => ({
-            name: clin.name,
-            description: clin.description,
-            pricingModel: clin.pricingModel,
-            periodId: clin.periodId
-          }))
+          create: newClins
         }
       }
     }
@@ -141,6 +148,8 @@ export async function PUT(request: Request) {
         }
       }
     })
+
+    console.log('✅ Save completed. Final CLINs in database:', solicitation.clins.map((c: any) => `${c.name}(${c.periodId})`));
 
     return NextResponse.json(solicitation)
   } catch (error) {
