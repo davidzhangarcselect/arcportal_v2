@@ -660,7 +660,7 @@ const ArcPortal = () => {
         body: JSON.stringify({
           vendorId: proposalData.vendorId || currentUser?.id,
           solicitationId: proposalData.solicitationId,
-          notes: proposalData.notes || ''
+          notes: ''
         }),
       });
 
@@ -2175,16 +2175,7 @@ const ArcPortal = () => {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea
-                id="notes"
-                value={proposalData.notes}
-                onChange={(e) => setProposalData((prev: any) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Any additional information or notes..."
-                rows={3}
-              />
-            </div>
+
           </div>
 
           <Separator />
@@ -2304,14 +2295,7 @@ const ArcPortal = () => {
               </div>
             </div>
 
-            {proposalData.notes && (
-              <div>
-                <Label className="text-base font-medium">Additional Notes</Label>
-                <div className="mt-1 p-3 bg-gray-50 rounded border">
-                  <p className="text-sm">{proposalData.notes}</p>
-                </div>
-              </div>
-            )}
+
           </div>
 
           <Separator />
