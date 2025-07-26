@@ -2251,6 +2251,18 @@ const ArcPortal = () => {
             </div>
 
             <div>
+              <Label className="text-base font-medium">Proposal Notes</Label>
+              <p className="text-sm text-gray-600 mb-3">Add any additional notes or comments for your proposal</p>
+              <Textarea
+                value={proposalData.notes}
+                onChange={(e) => setProposalData((prev: any) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Enter any additional information, clarifications, or notes about your proposal..."
+                rows={4}
+                className="border-green-200 focus:border-green-400"
+              />
+            </div>
+
+            <div>
               <Label className="text-base font-medium">Pricing Summary</Label>
               <p className="text-sm text-gray-600 mb-3">Complete your pricing using the integrated tool</p>
               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -3869,20 +3881,41 @@ const ArcPortal = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-green-600" />
-              Vendor Notes
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-green-600" />
+                Vendor Notes
+              </div>
+              {userType === 'vendor' && (
+                <div className="flex gap-2">
+                  {isEditing ? (
+                    <span className="text-sm text-gray-500">Edit mode active</span>
+                  ) : (
+                    <span className="text-sm text-gray-500">Read-only</span>
+                  )}
+                </div>
+              )}
             </CardTitle>
             <CardDescription>
               Notes provided by the vendor during proposal submission.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="min-h-[60px] p-3 bg-green-50 border border-green-200 rounded-md">
-              <p className="text-sm text-green-900">
-                {proposal.notes || 'No notes provided by vendor.'}
-              </p>
-            </div>
+            {isEditing && userType === 'vendor' ? (
+              <Textarea
+                value={editData.notes}
+                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any additional information, clarifications, or notes about your proposal..."
+                rows={4}
+                className="border-green-200 focus:border-green-400"
+              />
+            ) : (
+              <div className="min-h-[60px] p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-900">
+                  {proposal.notes || 'No notes provided by vendor.'}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
