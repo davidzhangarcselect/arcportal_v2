@@ -2058,6 +2058,15 @@ const ArcPortal = () => {
     );
   };
 
+  // Helper function to calculate total price from solicitation data
+  const calculateTotalPrice = (solicitation: SampleSolicitation) => {
+    if (!solicitation?.clins) return 0;
+    
+    // This is a placeholder calculation - in a real app, this would come from saved pricing data
+    // For now, we'll return a sample total based on the number of CLINs
+    return solicitation.clins.length * 50000; // Sample calculation
+  };
+
   // Proposal Attachments Component
   const ProposalAttachments = ({ solicitation, proposalData, setProposalData, setActiveTab }: { 
     solicitation: SampleSolicitation, 
@@ -2157,7 +2166,7 @@ const ArcPortal = () => {
                     <span className="font-medium text-blue-800">Total Price:</span>
                   </div>
                   <span className="text-lg font-bold text-blue-800">
-                    ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    ${calculateTotalPrice(solicitation).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </span>
                 </div>
                 <p className="text-sm text-blue-700">
@@ -2286,7 +2295,7 @@ const ArcPortal = () => {
                     <span className="font-medium text-blue-800">Total Price:</span>
                   </div>
                   <span className="text-xl font-bold text-blue-800">
-                    ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    ${calculateTotalPrice(solicitation).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </span>
                 </div>
                 <p className="text-sm text-blue-700 mt-2">
