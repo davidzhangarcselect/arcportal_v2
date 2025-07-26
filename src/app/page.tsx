@@ -2392,6 +2392,7 @@ const ArcPortal = () => {
           }
         }
 
+        console.log('🔄 SETTING INITIAL periodClins state:', clinsByPeriod);
         setPeriodClins(clinsByPeriod);
 
         // Store original setup for change tracking
@@ -2508,7 +2509,6 @@ const ArcPortal = () => {
 
       const newId = `clin_${periodId}_${Date.now()}`;
       const clinNumber = generateClinNumber(periodId, period.type);
-      
       const newClin = {
         id: newId,
         name: clinNumber,
@@ -2517,10 +2517,15 @@ const ArcPortal = () => {
         periodId: periodId
       };
 
-      setPeriodClins(prev => ({
-        ...prev,
-        [periodId]: [...(prev[periodId] || []), newClin]
-      }));
+      console.log(`➕ ADDING CLIN ${clinNumber} to period ${periodId}`);
+      setPeriodClins(prev => {
+        const newState = {
+          ...prev,
+          [periodId]: [...(prev[periodId] || []), newClin]
+        };
+        console.log('🗂️ After adding CLIN, periodClins state:', newState);
+        return newState;
+      });
 
       // Initialize pricing data for the new CLIN
       setPricingData((prev: any) => ({
@@ -2536,10 +2541,15 @@ const ArcPortal = () => {
     };
 
     const removeClinFromPeriod = (periodId: string, clinId: string) => {
-      setPeriodClins(prev => ({
-        ...prev,
-        [periodId]: prev[periodId]?.filter(c => c.id !== clinId) || []
-      }));
+      console.log(`🗑️ REMOVING CLIN ${clinId} from period ${periodId}`);
+      setPeriodClins(prev => {
+        const newState = {
+          ...prev,
+          [periodId]: prev[periodId]?.filter(c => c.id !== clinId) || []
+        };
+        console.log('🗂️ After removing CLIN, periodClins state:', newState);
+        return newState;
+      });
       
       setPricingData((prev: any) => {
         const newData = { ...prev };
