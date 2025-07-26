@@ -112,11 +112,28 @@ export async function PUT(request: Request) {
       
       console.log('📝 About to create', newClins.length, 'new CLINs:', newClins);
       
-      clinUpdateData = {
-        clins: {
-          create: newClins
+      // Try to create CLINs one by one to catch any individual failures
+      const createdClins = [];
+      for (const clinData of newClins) {
+        try {
+          console.log('🔨 Creating individual CLIN:', clinData);
+          const createdClin = await prisma.clin.create({
+            data: {
+              ...clinData,
+              solicitationId: id
+            }
+          });
+          createdClins.push(createdClin);
+          console.log('✅ Successfully created CLIN:', createdClin.name);
+        } catch (error) {
+          console.error('❌ Failed to create CLIN:', clinData, 'Error:', error);
         }
       }
+      
+      console.log('📊 Total CLINs created:', createdClins.length, 'out of', newClins.length);
+      
+      // Don't use the batch create, we've already created them individually
+      clinUpdateData = {}
     }
 
     // Build update data object with only provided fields
