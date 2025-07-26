@@ -1210,7 +1210,8 @@ const ArcPortal = () => {
       proposalCutoffDate: '',
       status: 'open' as 'open' | 'closed',
       technicalRequirements: [{ title: '', instructions: '' }],
-      pastPerformanceRequirements: [{ title: '', instructions: '' }]
+      pastPerformanceRequirements: [{ title: '', instructions: '' }],
+      evaluationPeriods: [{ name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }]
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -1239,6 +1240,27 @@ const ArcPortal = () => {
       }));
     }, []);
 
+    const handlePeriodChange = useCallback((index: number, field: 'name' | 'type' | 'startDate' | 'endDate', value: string) => {
+      setFormData(prev => ({
+        ...prev,
+        evaluationPeriods: prev.evaluationPeriods.map((period, i) => i === index ? { ...period, [field]: value } : period)
+      }));
+    }, []);
+
+    const addPeriod = useCallback(() => {
+      setFormData(prev => ({
+        ...prev,
+        evaluationPeriods: [...prev.evaluationPeriods, { name: '', type: 'OPTION', startDate: '', endDate: '' }]
+      }));
+    }, []);
+
+    const removePeriod = useCallback((index: number) => {
+      setFormData(prev => ({
+        ...prev,
+        evaluationPeriods: prev.evaluationPeriods.filter((_, i) => i !== index)
+      }));
+    }, []);
+
     const handleSubmit = useCallback(async () => {
       setIsSubmitting(true);
       try {
@@ -1252,7 +1274,8 @@ const ArcPortal = () => {
           proposalCutoffDate: '',
           status: 'open',
           technicalRequirements: [{ title: '', instructions: '' }],
-          pastPerformanceRequirements: [{ title: '', instructions: '' }]
+          pastPerformanceRequirements: [{ title: '', instructions: '' }],
+          evaluationPeriods: [{ name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }]
         });
       } finally {
         setIsSubmitting(false);
@@ -1427,6 +1450,82 @@ const ArcPortal = () => {
                     placeholder="Provide detailed instructions for this document upload..."
                     rows={3}
                   />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pricing & Evaluation Periods Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-lg font-semibold">Pricing & Evaluation Periods</Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={addPeriod}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Period
+              </Button>
+            </div>
+            {formData.evaluationPeriods.map((period, index) => (
+              <div key={index} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="font-medium">Period {index + 1}</Label>
+                  {formData.evaluationPeriods.length > 1 && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => removePeriod(index)}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`period-name-${index}`}>Period Name</Label>
+                    <Input
+                      id={`period-name-${index}`}
+                      value={period.name}
+                      onChange={(e) => handlePeriodChange(index, 'name', e.target.value)}
+                      placeholder="e.g., Base Period, Option Year 1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`period-type-${index}`}>Period Type</Label>
+                    <Select value={period.type} onValueChange={(value: 'BASE' | 'OPTION') => handlePeriodChange(index, 'type', value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BASE">Base Period</SelectItem>
+                        <SelectItem value="OPTION">Option Period</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`period-start-${index}`}>Start Date</Label>
+                    <Input
+                      id={`period-start-${index}`}
+                      type="date"
+                      value={period.startDate}
+                      onChange={(e) => handlePeriodChange(index, 'startDate', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`period-end-${index}`}>End Date</Label>
+                    <Input
+                      id={`period-end-${index}`}
+                      type="date"
+                      value={period.endDate}
+                      onChange={(e) => handlePeriodChange(index, 'endDate', e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             ))}

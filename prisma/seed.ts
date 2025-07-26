@@ -42,6 +42,44 @@ async function main() {
       questionCutoffDate: new Date('2025-08-01'),
       proposalCutoffDate: new Date('2025-08-10'),
       status: 'OPEN',
+      technicalRequirements: [
+        {
+          title: 'Technical Approach Document',
+          instructions: 'Provide a detailed technical approach document (max 20 pages) describing your methodology, architecture, and implementation plan. Include system diagrams and technology stack details.'
+        },
+        {
+          title: 'System Architecture Diagram',
+          instructions: 'Submit a comprehensive system architecture diagram showing all components, data flows, and integrations. Use standard notation (UML, C4, etc.).'
+        },
+        {
+          title: 'Security Implementation Plan',
+          instructions: 'Detail your security implementation approach including authentication, authorization, data encryption, and compliance with federal security standards.'
+        }
+      ],
+      pastPerformanceRequirements: [
+        {
+          title: 'Similar Project Reference #1',
+          instructions: 'Provide details of a similar enterprise software development project completed within the last 3 years. Include client contact information, project scope, timeline, and outcomes.'
+        },
+        {
+          title: 'Client Testimonial',
+          instructions: 'Submit a testimonial letter from a previous client for a comparable software development project. Letter must be on official letterhead and signed.'
+        }
+      ],
+      evaluationPeriods: [
+        {
+          name: 'Base Period',
+          type: 'BASE',
+          startDate: '2025-09-01',
+          endDate: '2026-08-31'
+        },
+        {
+          name: 'Option Year 1',
+          type: 'OPTION',
+          startDate: '2026-09-01',
+          endDate: '2027-08-31'
+        }
+      ]
 
     },
   })
@@ -58,6 +96,34 @@ async function main() {
       questionCutoffDate: new Date('2025-08-15'),
       proposalCutoffDate: new Date('2025-08-25'),
       status: 'OPEN',
+      technicalRequirements: [
+        {
+          title: 'Cybersecurity Assessment Plan',
+          instructions: 'Provide a comprehensive cybersecurity assessment plan detailing your methodology, tools, and approach. Include timeline and deliverables (max 15 pages).'
+        },
+        {
+          title: 'Team Qualifications Matrix',
+          instructions: 'Submit a matrix showing team member qualifications, certifications (CISSP, CISM, etc.), and relevant experience. Include resumes for key personnel.'
+        }
+      ],
+      pastPerformanceRequirements: [
+        {
+          title: 'Federal Cybersecurity Project Reference',
+          instructions: 'Provide details of a federal cybersecurity project completed within the last 2 years. Must include scope, security frameworks used, and client contact information.'
+        },
+        {
+          title: 'Security Clearance Documentation',
+          instructions: 'Submit documentation of team members\' security clearances and ability to work with classified information if required.'
+        }
+      ],
+      evaluationPeriods: [
+        {
+          name: 'Base Period',
+          type: 'BASE',
+          startDate: '2025-10-01',
+          endDate: '2026-09-30'
+        }
+      ]
 
     },
   })

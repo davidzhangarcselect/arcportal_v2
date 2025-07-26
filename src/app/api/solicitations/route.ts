@@ -42,7 +42,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, clins, technicalRequirements, pastPerformanceRequirements } = body
+    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, technicalRequirements, pastPerformanceRequirements, evaluationPeriods } = body
 
     const solicitation = await prisma.solicitation.create({
       data: {
@@ -55,16 +55,16 @@ export async function POST(request: Request) {
         proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
         technicalRequirements: technicalRequirements || null,
         pastPerformanceRequirements: pastPerformanceRequirements || null,
-        clins: {
-          create: clins?.map((clin: { name: string; description: string; pricingModel: string }) => ({
-            name: clin.name,
-            description: clin.description,
-            pricingModel: clin.pricingModel
-          })) || []
-        }
+        evaluationPeriods: evaluationPeriods || null
       },
       include: {
-        clins: true
+        clins: true,
+        _count: {
+          select: {
+            proposals: true,
+            questions: true
+          }
+        }
       }
     })
 
