@@ -2639,10 +2639,29 @@ const ArcPortal = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Technical Requirements Section */}
           <div className="space-y-4">
             <div>
               <Label className="text-base font-medium">Technical Proposal</Label>
               <p className="text-sm text-gray-600 mb-3">Upload technical documentation and approach</p>
+              
+              {/* Show admin-configured technical requirements */}
+              {solicitation.technicalRequirements && solicitation.technicalRequirements.length > 0 && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Required Technical Documents:</h4>
+                  <div className="space-y-2">
+                    {solicitation.technicalRequirements.map((req: any, index: number) => (
+                      <div key={index} className="border-l-4 border-blue-400 pl-3">
+                        <p className="font-medium text-sm text-blue-800">{req.title}</p>
+                        {req.instructions && (
+                          <p className="text-xs text-blue-700 mt-1">{req.instructions}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                 <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                 <p className="text-sm text-gray-600 mb-2">Drop files here or click to browse</p>
@@ -2672,6 +2691,24 @@ const ArcPortal = () => {
             <div>
               <Label className="text-base font-medium">Past Performance</Label>
               <p className="text-sm text-gray-600 mb-3">Upload past performance documentation</p>
+              
+              {/* Show admin-configured past performance requirements */}
+              {solicitation.pastPerformanceRequirements && solicitation.pastPerformanceRequirements.length > 0 && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-900 mb-2">Required Past Performance Documents:</h4>
+                  <div className="space-y-2">
+                    {solicitation.pastPerformanceRequirements.map((req: any, index: number) => (
+                      <div key={index} className="border-l-4 border-green-400 pl-3">
+                        <p className="font-medium text-sm text-green-800">{req.title}</p>
+                        {req.instructions && (
+                          <p className="text-xs text-green-700 mt-1">{req.instructions}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                 <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
                 <p className="text-sm text-gray-600 mb-2">Drop files here or click to browse</p>
