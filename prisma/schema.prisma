@@ -30,7 +30,6 @@ model Solicitation {
   title              String
   agency             String
   description        String
-  dueDate            DateTime
   questionCutoffDate DateTime?
   proposalCutoffDate DateTime?
   status             SolicitationStatus @default(OPEN)

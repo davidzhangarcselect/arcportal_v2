@@ -38,7 +38,7 @@ async function main() {
       title: 'Enterprise Software Development Services',
       agency: 'Department of Technology',
       description: 'Seeking qualified vendors for enterprise software development and maintenance services.',
-      dueDate: new Date('2025-08-15'),
+
       questionCutoffDate: new Date('2025-08-01'),
       proposalCutoffDate: new Date('2025-08-10'),
       status: 'OPEN',
@@ -54,7 +54,7 @@ async function main() {
       title: 'Cybersecurity Consulting Services',
       agency: 'Department of Defense',
       description: 'Comprehensive cybersecurity assessment and consulting services.',
-      dueDate: new Date('2025-09-01'),
+
       questionCutoffDate: new Date('2025-08-15'),
       proposalCutoffDate: new Date('2025-08-25'),
       status: 'OPEN',

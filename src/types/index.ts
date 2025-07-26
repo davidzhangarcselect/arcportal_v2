@@ -79,7 +79,6 @@ export interface SampleSolicitation {
   number: string;
   title: string;
   agency: string;
-  dueDate: string;
   questionCutoffDate?: string;
   proposalCutoffDate?: string;
   description: string;

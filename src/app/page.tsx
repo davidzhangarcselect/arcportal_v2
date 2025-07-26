@@ -33,7 +33,6 @@ const ArcPortal = () => {
     title: '',
     description: '',
     agency: '',
-    dueDate: '',
     questionCutoffDate: '',
     proposalCutoffDate: '',
     status: 'open' as 'open' | 'closed'
@@ -45,7 +44,6 @@ const ArcPortal = () => {
     title: '',
     description: '',
     agency: '',
-    dueDate: '',
     questionCutoffDate: '',
     proposalCutoffDate: '',
     status: 'open' as 'open' | 'closed'
@@ -128,7 +126,7 @@ const ArcPortal = () => {
           const solicitationsData = await solicitationsResponse.json();
            setSolicitations(solicitationsData.map((s: any) => ({
              ...s,
-             dueDate: new Date(s.dueDate).toISOString().split('T')[0],
+
              questionCutoffDate: s.questionCutoffDate ? new Date(s.questionCutoffDate).toISOString().slice(0, 16) : undefined,
              proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
              status: s.status.toLowerCase(),
@@ -563,7 +561,7 @@ const ArcPortal = () => {
           title: newSolicitation.title,
           description: newSolicitation.description,
           agency: newSolicitation.agency,
-          dueDate: newSolicitation.dueDate,
+
           status: newSolicitation.status as 'open' | 'closed',
           attachments: [],
           clins: newSolicitation.clins || []
@@ -576,7 +574,7 @@ const ArcPortal = () => {
           title: '',
           description: '',
           agency: '',
-          dueDate: '',
+
           questionCutoffDate: '',
           proposalCutoffDate: '',
           status: 'open'
@@ -612,7 +610,7 @@ const ArcPortal = () => {
           title: updatedSolicitation.title,
           description: updatedSolicitation.description,
           agency: updatedSolicitation.agency,
-          dueDate: updatedSolicitation.dueDate,
+
           questionCutoffDate: updatedSolicitation.questionCutoffDate ? new Date(updatedSolicitation.questionCutoffDate).toISOString().slice(0, 16) : undefined,
           proposalCutoffDate: updatedSolicitation.proposalCutoffDate ? new Date(updatedSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
           status: updatedSolicitation.status.toLowerCase() as 'open' | 'closed',
@@ -629,7 +627,7 @@ const ArcPortal = () => {
           title: '',
           description: '',
           agency: '',
-          dueDate: '',
+
           questionCutoffDate: '',
           proposalCutoffDate: '',
           status: 'open'
@@ -654,7 +652,7 @@ const ArcPortal = () => {
       title: solicitation.title,
       description: solicitation.description,
       agency: solicitation.agency,
-      dueDate: solicitation.dueDate ? new Date(solicitation.dueDate).toISOString().slice(0, 16) : '',
+
       questionCutoffDate: solicitation.questionCutoffDate ? new Date(solicitation.questionCutoffDate).toISOString().slice(0, 16) : '',
       proposalCutoffDate: solicitation.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toISOString().slice(0, 16) : '',
       status: solicitation.status.toLowerCase() as 'open' | 'closed'
@@ -944,7 +942,7 @@ const ArcPortal = () => {
             </CardContent>
             <div className="px-6 pb-4">
               <div className="text-xs text-gray-500 text-center">
-                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-c1b80ca'} • {new Date('2025-07-26 14:44:00 -0400').toLocaleString()}
+                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-b24a65a'} • {new Date('2025-07-26 14:55:42 -0400').toLocaleString()}
               </div>
             </div>
           </Card>
@@ -1121,7 +1119,7 @@ const ArcPortal = () => {
 
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
@@ -1152,14 +1150,14 @@ const ArcPortal = () => {
                 <Clock className="h-8 w-8 text-orange-600" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {openSolicitations.filter(s => {
-                      const dueDate = new Date(s.dueDate);
-                      const today = new Date();
-                      const diffTime = dueDate.getTime() - today.getTime();
-                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                      return diffDays <= 7;
-                    }).length}
-                  </p>
+                     {openSolicitations.filter(s => {
+                       if (!s.proposalCutoffDate) return false;
+                       const cutoffDate = new Date(s.proposalCutoffDate);
+                       const today = new Date();
+                       const diffTime = cutoffDate.getTime() - today.getTime();
+                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                       return diffDays <= 7 && diffDays >= 0;
+                     }).length}                  </p>
                   <p className="text-sm text-gray-600">Due This Week</p>
                 </div>
               </div>
@@ -1185,8 +1183,12 @@ const ArcPortal = () => {
                     <p className="text-sm text-gray-600">{solicitation.title}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">Due: {solicitation.dueDate}</p>
-                    <Badge variant="outline">{solicitation.status}</Badge>
+                     <p className="text-sm font-medium">
+                       {solicitation.proposalCutoffDate 
+                         ? `Proposal Due: ${new Date(solicitation.proposalCutoffDate).toLocaleDateString()}`
+                         : 'No deadline set'
+                       }
+                     </p>                    <Badge variant="outline">{solicitation.status}</Badge>
                   </div>
                 </div>
               ))}
@@ -1204,7 +1206,6 @@ const ArcPortal = () => {
       title: '',
       description: '',
       agency: '',
-      dueDate: '',
       questionCutoffDate: '',
       proposalCutoffDate: '',
       status: 'open' as 'open' | 'closed'
@@ -1224,7 +1225,6 @@ const ArcPortal = () => {
           title: '',
           description: '',
           agency: '',
-          dueDate: '',
           questionCutoffDate: '',
           proposalCutoffDate: '',
           status: 'open'
@@ -1282,18 +1282,9 @@ const ArcPortal = () => {
             />
           </div>
           
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="dueDate">Proposal Due Date</Label>
-              <Input
-                id="dueDate"
-                type="datetime-local"
-                value={formData.dueDate}
-                onChange={(e) => handleFieldChange('dueDate', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="questionCutoffDate">Question Cutoff</Label>
+              <Label htmlFor="questionCutoffDate">Question Cutoff Date & Time Date & Time</Label>
               <Input
                 id="questionCutoffDate"
                 type="datetime-local"
@@ -1302,7 +1293,7 @@ const ArcPortal = () => {
               />
             </div>
             <div>
-              <Label htmlFor="proposalCutoffDate">Proposal Cutoff</Label>
+              <Label htmlFor="proposalCutoffDate">Proposal Cutoff Date & Time Date & Time</Label>
               <Input
                 id="proposalCutoffDate"
                 type="datetime-local"
@@ -1419,27 +1410,19 @@ const ArcPortal = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+
                 <div>
-                  <Label htmlFor="edit-dueDate">Proposal Due Date</Label>
-                  <Input
-                    id="edit-dueDate"
-                    type="datetime-local"
-                    value={editSolicitationData.dueDate}
-                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff</Label>
+                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff Date & Time</Label>
                   <Input
                     id="edit-questionCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.questionCutoffDate}
-                    onChange={(e) => handleEditSolicitationChange('questionCutoffDate', e.target.value)}
+                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff</Label>
+                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff Date & Time</Label>
                   <Input
                     id="edit-proposalCutoffDate"
                     type="datetime-local"
@@ -1498,11 +1481,13 @@ const ArcPortal = () => {
                         <Building2 className="h-4 w-4" />
                         {solicitation.agency}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        Due: {solicitation.dueDate}
-                      </span>
-                      <span className="flex items-center gap-1">
+                       <span className="flex items-center gap-1">
+                         <Calendar className="h-4 w-4" />
+                         {solicitation.proposalCutoffDate 
+                           ? `Proposal Due: ${new Date(solicitation.proposalCutoffDate).toLocaleDateString()}`
+                           : 'No deadline set'
+                         }
+                       </span>                      <span className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
                         {solicitation.attachments?.length || 0} attachments
                       </span>
@@ -1640,27 +1625,19 @@ const ArcPortal = () => {
                 />
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+
                 <div>
-                  <Label htmlFor="edit-dueDate">Proposal Due Date</Label>
-                  <Input
-                    id="edit-dueDate"
-                    type="datetime-local"
-                    value={editSolicitationData.dueDate}
-                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff</Label>
+                  <Label htmlFor="edit-questionCutoffDate">Question Cutoff Date & Time</Label>
                   <Input
                     id="edit-questionCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.questionCutoffDate}
-                    onChange={(e) => handleEditSolicitationChange('questionCutoffDate', e.target.value)}
+                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff</Label>
+                  <Label htmlFor="edit-proposalCutoffDate">Proposal Cutoff Date & Time</Label>
                   <Input
                     id="edit-proposalCutoffDate"
                     type="datetime-local"
@@ -1743,10 +1720,7 @@ const ArcPortal = () => {
                     <Label>Agency</Label>
                     <p className="font-medium">{solicitation.agency}</p>
                   </div>
-                  <div>
-                    <Label>Proposal Due Date</Label>
-                    <p className="font-medium">{solicitation.dueDate}</p>
-                  </div>
+
                   <div>
                     <Label>Status</Label>
                     {getStatusBadge(getSolicitationStatus(solicitation))}
@@ -2445,7 +2419,7 @@ const ArcPortal = () => {
                 </div>
                 <div>
                   <Label className="text-blue-800">Due Date</Label>
-                  <p className="font-medium">{solicitation.dueDate}</p>
+
                 </div>
               </div>
             </div>
@@ -2590,7 +2564,7 @@ const ArcPortal = () => {
               // Format the solicitation data
               const formattedSolicitation = {
                 ...foundSolicitation,
-                dueDate: new Date(foundSolicitation.dueDate).toISOString().split('T')[0],
+
                 questionCutoffDate: foundSolicitation.questionCutoffDate ? new Date(foundSolicitation.questionCutoffDate).toISOString().slice(0, 16) : undefined,
                 proposalCutoffDate: foundSolicitation.proposalCutoffDate ? new Date(foundSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
                 status: foundSolicitation.status.toLowerCase(),
@@ -3068,7 +3042,7 @@ const ArcPortal = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${userType === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsList className={`grid w-full ${userType === 'admin' ? 'grid-cols-2' : 'grid-cols-2'}`}>
             {userType === 'admin' && <TabsTrigger value="setup">Setup</TabsTrigger>}
             <TabsTrigger value="pricing">Pricing</TabsTrigger>
             <TabsTrigger value="summary">Pricing Summary</TabsTrigger>
@@ -3771,7 +3745,7 @@ const ArcPortal = () => {
               </div>
               <div>
                 <Label className="text-sm font-medium">Due Date</Label>
-                <p>{solicitation?.dueDate}</p>
+                <p>{solicitation?.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toLocaleDateString() : 'No deadline set'}</p>
               </div>
             </CardContent>
           </Card>
