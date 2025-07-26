@@ -944,7 +944,7 @@ const ArcPortal = () => {
             </CardContent>
             <div className="px-6 pb-4">
               <div className="text-xs text-gray-500 text-center">
-                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-78f562c'} • {new Date('2025-07-26 14:21:28 -0400').toLocaleString()}
+                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-c1b80ca'} • {new Date('2025-07-26 14:44:00 -0400').toLocaleString()}
               </div>
             </div>
           </Card>
@@ -1209,23 +1209,29 @@ const ArcPortal = () => {
       proposalCutoffDate: '',
       status: 'open' as 'open' | 'closed'
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleFieldChange = useCallback((field: string, value: string) => {
       setFormData(prev => ({ ...prev, [field]: value }));
     }, []);
 
-    const handleSubmit = useCallback(() => {
-      createSolicitation(formData);
-      setFormData({
-        number: '',
-        title: '',
-        description: '',
-        agency: '',
-        dueDate: '',
-        questionCutoffDate: '',
-        proposalCutoffDate: '',
-        status: 'open'
-      });
+    const handleSubmit = useCallback(async () => {
+      setIsSubmitting(true);
+      try {
+        await createSolicitation(formData);
+        setFormData({
+          number: '',
+          title: '',
+          description: '',
+          agency: '',
+          dueDate: '',
+          questionCutoffDate: '',
+          proposalCutoffDate: '',
+          status: 'open'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }, [formData]);
 
     return (
@@ -1325,9 +1331,9 @@ const ArcPortal = () => {
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!formData.number || !formData.title || !formData.description}
+              disabled={!formData.number || !formData.title || !formData.description || isSubmitting}
             >
-              Create Solicitation
+              {isSubmitting ? 'Creating...' : 'Create Solicitation'}
             </Button>
           </div>
         </CardContent>
