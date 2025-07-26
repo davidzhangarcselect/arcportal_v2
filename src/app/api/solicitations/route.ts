@@ -42,23 +42,59 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, technicalRequirements, pastPerformanceRequirements, evaluationPeriods } = body
+    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, technicalRequirements, pastPerformanceRequirements, evaluationPeriods, periodClins } = body
 
+    // Create solicitation first
     const solicitation = await prisma.solicitation.create({
       data: {
         number,
         title,
         agency,
         description,
-
         questionCutoffDate: questionCutoffDate ? new Date(questionCutoffDate) : null,
         proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
         technicalRequirements: technicalRequirements || null,
         pastPerformanceRequirements: pastPerformanceRequirements || null,
         evaluationPeriods: evaluationPeriods || null
-      },
+      }
+    })
+
+    // Create periods and CLINs if provided
+    if (evaluationPeriods && periodClins) {
+      for (const period of evaluationPeriods) {
+        // Create period
+        const createdPeriod = await prisma.period.create({
+          data: {
+            name: period.name,
+            type: period.type,
+            startDate: period.startDate ? new Date(period.startDate) : new Date(),
+            endDate: period.endDate ? new Date(period.endDate) : new Date(),
+            solicitationId: solicitation.id
+          }
+        })
+
+        // Create CLINs for this period
+        const clinsForPeriod = periodClins[period.id] || []
+        for (const clin of clinsForPeriod) {
+          await prisma.clin.create({
+            data: {
+              name: clin.name,
+              description: clin.description,
+              pricingModel: clin.pricingModel,
+              solicitationId: solicitation.id,
+              periodId: createdPeriod.id
+            }
+          })
+        }
+      }
+    }
+
+    // Fetch the complete solicitation with all related data
+    const completeSolicitation = await prisma.solicitation.findUnique({
+      where: { id: solicitation.id },
       include: {
         clins: true,
+        periods: true,
         _count: {
           select: {
             proposals: true,
@@ -68,7 +104,7 @@ export async function POST(request: Request) {
       }
     })
 
-    return NextResponse.json(solicitation, { status: 201 })
+    return NextResponse.json(completeSolicitation, { status: 201 })
   } catch (error) {
     console.error('Error creating solicitation:', error)
     return NextResponse.json(

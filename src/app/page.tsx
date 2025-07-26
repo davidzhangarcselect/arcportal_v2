@@ -1211,8 +1211,8 @@ const ArcPortal = () => {
       status: 'open' as 'open' | 'closed',
       technicalRequirements: [{ title: '', instructions: '' }],
       pastPerformanceRequirements: [{ title: '', instructions: '' }],
-      evaluationPeriods: [{ name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }]
-    });
+          evaluationPeriods: [{ id: 'base_period_1', name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }],
+          periodClins: { 'base_period_1': [{ id: 'clin_base_1', name: '0001', description: 'Base Contract Line Item', pricingModel: 'FFP' }] } as { [key: string]: any[] } as { [key: string]: any[] }    });
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleFieldChange = useCallback((field: string, value: string) => {
@@ -1240,26 +1240,107 @@ const ArcPortal = () => {
       }));
     }, []);
 
-    const handlePeriodChange = useCallback((index: number, field: 'name' | 'type' | 'startDate' | 'endDate', value: string) => {
+    const handlePeriodChange = useCallback((periodId: string, field: 'name' | 'type' | 'startDate' | 'endDate', value: string) => {
       setFormData(prev => ({
         ...prev,
-        evaluationPeriods: prev.evaluationPeriods.map((period, i) => i === index ? { ...period, [field]: value } : period)
+        evaluationPeriods: prev.evaluationPeriods.map(period => 
+          period.id === periodId ? { ...period, [field]: value } : period
+        )
       }));
     }, []);
 
     const addPeriod = useCallback(() => {
+      const newId = `period_${Date.now()}`;
+      const optionCount = formData.evaluationPeriods.filter(p => p.type === 'OPTION').length;
+      const newPeriod = { 
+        id: newId, 
+        name: `Option Period ${optionCount + 1}`, 
+        type: 'OPTION', 
+        startDate: '', 
+        endDate: '' 
+      };
+      
       setFormData(prev => ({
         ...prev,
-        evaluationPeriods: [...prev.evaluationPeriods, { name: '', type: 'OPTION', startDate: '', endDate: '' }]
+        evaluationPeriods: [...prev.evaluationPeriods, newPeriod],
+        periodClins: { ...prev.periodClins, [newId]: [] }
+      }));
+    }, [formData.evaluationPeriods]);
+
+    const removePeriod = useCallback((index: number) => {
+      const periodToRemove = formData.evaluationPeriods[index];
+      setFormData(prev => ({
+        ...prev,
+        evaluationPeriods: prev.evaluationPeriods.filter((_, i) => i !== index),
+        periodClins: Object.fromEntries(
+          Object.entries(prev.periodClins).filter(([periodId]) => periodId !== periodToRemove.id)
+        )
+      }));
+    }, [formData.evaluationPeriods]);
+
+    const addClinToPeriod = useCallback((periodId: string) => {
+      const period = formData.evaluationPeriods.find(p => p.id === periodId);
+      if (!period) return;
+
+      const existingClins = formData.periodClins[periodId] || [];
+      const clinCount = existingClins.length + 1;
+      
+      let clinNumber;
+      if (period.type === 'BASE') {
+        clinNumber = String(clinCount).padStart(4, '0');
+      } else {
+        const optionPeriods = formData.evaluationPeriods.filter(p => p.type === 'OPTION');
+        const periodIndex = optionPeriods.findIndex(p => p.id === periodId);
+        const periodNumber = periodIndex + 1;
+        clinNumber = `${periodNumber}${String(clinCount).padStart(3, '0')}`;
+      }
+
+      const newClin = {
+        id: `clin_${periodId}_${Date.now()}`,
+        name: clinNumber,
+        description: 'New Contract Line Item',
+        pricingModel: 'FFP'
+      };
+
+      setFormData(prev => ({
+        ...prev,
+        periodClins: {
+          ...prev.periodClins,
+          [periodId]: [...(prev.periodClins[periodId] || []), newClin]
+        }
+      }));
+    }, [formData.evaluationPeriods, formData.periodClins]);
+
+    const removeClinFromPeriod = useCallback((periodId: string, clinId: string) => {
+      setFormData(prev => ({
+        ...prev,
+        periodClins: {
+          ...prev.periodClins,
+          [periodId]: prev.periodClins[periodId]?.filter(c => c.id !== clinId) || []
+        }
       }));
     }, []);
 
-    const removePeriod = useCallback((index: number) => {
+    const updateClinInPeriod = useCallback((periodId: string, clinId: string, field: string, value: string) => {
       setFormData(prev => ({
         ...prev,
-        evaluationPeriods: prev.evaluationPeriods.filter((_, i) => i !== index)
+        periodClins: {
+          ...prev.periodClins,
+          [periodId]: prev.periodClins[periodId]?.map(clin => 
+            clin.id === clinId ? { ...clin, [field]: value } : clin
+          ) || []
+        }
       }));
     }, []);
+
+    const getPricingModelBadge = (model: string) => {
+      const badges = {
+        'FFP': <Badge variant="default" className="bg-blue-100 text-blue-800">FFP</Badge>,
+        'TM': <Badge variant="secondary" className="bg-green-100 text-green-800">T&M</Badge>,
+        'CR': <Badge variant="outline" className="bg-orange-100 text-orange-800">CR</Badge>
+      };
+      return badges[model as keyof typeof badges] || <Badge variant="outline">{model}</Badge>;
+    };
 
     const handleSubmit = useCallback(async () => {
       setIsSubmitting(true);
@@ -1275,8 +1356,8 @@ const ArcPortal = () => {
           status: 'open',
           technicalRequirements: [{ title: '', instructions: '' }],
           pastPerformanceRequirements: [{ title: '', instructions: '' }],
-          evaluationPeriods: [{ name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }]
-        });
+      evaluationPeriods: [{ id: 'base_period_1', name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }],
+      periodClins: { 'base_period_1': [{ id: 'clin_base_1', name: '0001', description: 'Base Contract Line Item', pricingModel: 'FFP' }] }        });
       } finally {
         setIsSubmitting(false);
       }
@@ -1455,80 +1536,173 @@ const ArcPortal = () => {
             ))}
           </div>
 
-          {/* Pricing & Evaluation Periods Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-lg font-semibold">Pricing & Evaluation Periods</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={addPeriod}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Period
-              </Button>
+          {/* Pricing Setup - Evaluation Periods & CLINs */}
+          <div className="space-y-6">
+            <Label className="text-lg font-semibold">Pricing Setup - Evaluation Periods & CLINs</Label>
+            
+            {/* Evaluation Periods */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Evaluation Periods
+                </CardTitle>
+                <CardDescription>
+                  Configure base period and option periods for this solicitation
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.evaluationPeriods.map(period => (
+                  <div key={period.id} className="space-y-3 p-4 border rounded-lg bg-white">
+                    <div className="flex items-center gap-3">
+                      <Input
+                        value={period.name}
+                        onChange={(e) => handlePeriodChange(period.id, 'name', e.target.value)}
+                        placeholder="Period Name"
+                        className="flex-1"
+                      />
+                      <Select
+                        value={period.type}
+                        onValueChange={(value) => handlePeriodChange(period.id, 'type', value)}
+                        disabled={period.type === 'BASE'}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BASE">Base Period</SelectItem>
+                          <SelectItem value="OPTION">Option Period</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {period.type === 'OPTION' && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const index = formData.evaluationPeriods.findIndex(p => p.id === period.id);
+                            removePeriod(index);
+                          }}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Start Date</label>
+                        <Input
+                          type="date"
+                          value={period.startDate || ''}
+                          onChange={(e) => handlePeriodChange(period.id, 'startDate', e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">End Date</label>
+                        <Input
+                          type="date"
+                          value={period.endDate || ''}
+                          onChange={(e) => handlePeriodChange(period.id, 'endDate', e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" onClick={addPeriod} variant="outline" className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Option Period
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* CLINs Management by Period */}
+            <div className="space-y-6">
+              {formData.evaluationPeriods.map(period => (
+                <Card key={period.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calendar className="h-5 w-5" />
+                          {period.name} - CLINs
+                        </CardTitle>
+                        <CardDescription>
+                          Contract Line Items for {period.name}
+                          {period.type === 'BASE' && ' (0001, 0002, 0003...)'}
+                          {period.type === 'OPTION' && ` (${formData.evaluationPeriods.filter(p => p.type === 'OPTION').findIndex(p => p.id === period.id) + 1}001, ${formData.evaluationPeriods.filter(p => p.type === 'OPTION').findIndex(p => p.id === period.id) + 1}002...)`}
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        type="button"
+                        onClick={() => addClinToPeriod(period.id)} 
+                        className="bg-green-600 hover:bg-green-700"
+                        size="sm"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add CLIN
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {(formData.periodClins[period.id] || []).map(clin => (
+                      <div key={clin.id} className="flex items-center gap-4 p-4 border rounded-lg bg-white">
+                        <div className="w-20">
+                          <Input
+                            value={clin.name}
+                            onChange={(e) => updateClinInPeriod(period.id, clin.id, 'name', e.target.value)}
+                            placeholder="CLIN"
+                            className="font-medium text-center"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            value={clin.description}
+                            onChange={(e) => updateClinInPeriod(period.id, clin.id, 'description', e.target.value)}
+                            placeholder="CLIN Description"
+                            className="text-gray-700"
+                          />
+                        </div>
+                        <div className="w-48">
+                          <Select
+                            value={clin.pricingModel}
+                            onValueChange={(value) => updateClinInPeriod(period.id, clin.id, 'pricingModel', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="FFP">Firm Fixed Price</SelectItem>
+                              <SelectItem value="TM">Time & Materials</SelectItem>
+                              <SelectItem value="CR">Cost Reimbursable</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {getPricingModelBadge(clin.pricingModel)}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeClinFromPeriod(period.id, clin.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    {(!formData.periodClins[period.id] || formData.periodClins[period.id].length === 0) && (
+                      <div className="text-center py-6 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                        <p>No CLINs defined for {period.name}</p>
+                        <p className="text-sm">Click "Add CLIN" to create contract line items</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            {formData.evaluationPeriods.map((period, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Period {index + 1}</Label>
-                  {formData.evaluationPeriods.length > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => removePeriod(index)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`period-name-${index}`}>Period Name</Label>
-                    <Input
-                      id={`period-name-${index}`}
-                      value={period.name}
-                      onChange={(e) => handlePeriodChange(index, 'name', e.target.value)}
-                      placeholder="e.g., Base Period, Option Year 1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`period-type-${index}`}>Period Type</Label>
-                    <Select value={period.type} onValueChange={(value: 'BASE' | 'OPTION') => handlePeriodChange(index, 'type', value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BASE">Base Period</SelectItem>
-                        <SelectItem value="OPTION">Option Period</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`period-start-${index}`}>Start Date</Label>
-                    <Input
-                      id={`period-start-${index}`}
-                      type="date"
-                      value={period.startDate}
-                      onChange={(e) => handlePeriodChange(index, 'startDate', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`period-end-${index}`}>End Date</Label>
-                    <Input
-                      id={`period-end-${index}`}
-                      type="date"
-                      value={period.endDate}
-                      onChange={(e) => handlePeriodChange(index, 'endDate', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
           
           <div>
