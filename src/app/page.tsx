@@ -1197,6 +1197,116 @@ const ArcPortal = () => {
     );
   };
 
+  // Create Solicitation Form Component
+  const CreateSolicitationForm = React.memo(() => {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Create New Solicitation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="number">Solicitation Number</Label>
+              <Input
+                id="number"
+                value={newSolicitationData.number}
+                onChange={(e) => handleNewSolicitationChange('number', e.target.value)}
+                placeholder="e.g., RFP-2024-001"
+              />
+            </div>
+            <div>
+              <Label htmlFor="agency">Agency</Label>
+              <Input
+                id="agency"
+                value={newSolicitationData.agency}
+                onChange={(e) => handleNewSolicitationChange('agency', e.target.value)}
+                placeholder="e.g., Department of Defense"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              value={newSolicitationData.title}
+              onChange={(e) => handleNewSolicitationChange('title', e.target.value)}
+              placeholder="Enter solicitation title"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={newSolicitationData.description}
+              onChange={(e) => handleNewSolicitationChange('description', e.target.value)}
+              placeholder="Enter detailed description"
+              rows={3}
+            />
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="dueDate">Proposal Due Date</Label>
+              <Input
+                id="dueDate"
+                type="datetime-local"
+                value={newSolicitationData.dueDate}
+                onChange={(e) => handleNewSolicitationChange('dueDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="questionCutoffDate">Question Cutoff</Label>
+              <Input
+                id="questionCutoffDate"
+                type="datetime-local"
+                value={newSolicitationData.questionCutoffDate}
+                onChange={(e) => handleNewSolicitationChange('questionCutoffDate', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="proposalCutoffDate">Proposal Cutoff</Label>
+              <Input
+                id="proposalCutoffDate"
+                type="datetime-local"
+                value={newSolicitationData.proposalCutoffDate}
+                onChange={(e) => handleNewSolicitationChange('proposalCutoffDate', e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleNewSolicitationChange('status', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowCreateSolicitation(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => createSolicitation(newSolicitationData)}
+              disabled={!newSolicitationData.number || !newSolicitationData.title || !newSolicitationData.description}
+            >
+              Create Solicitation
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  });
+  CreateSolicitationForm.displayName = 'CreateSolicitationForm';
+
   // Solicitations Component
   const SolicitationsView = () => {
     if (selectedSolicitation) {
@@ -1224,111 +1334,7 @@ const ArcPortal = () => {
           </div>
         </div>
 
-        {showCreateSolicitation && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Create New Solicitation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="number">Solicitation Number</Label>
-                  <Input
-                    id="number"
-                    value={newSolicitationData.number}
-                    onChange={(e) => handleNewSolicitationChange('number', e.target.value)}
-                    placeholder="e.g., RFP-2024-001"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="agency">Agency</Label>
-                  <Input
-                    id="agency"
-                    value={newSolicitationData.agency}
-                    onChange={(e) => handleNewSolicitationChange('agency', e.target.value)}
-                    placeholder="e.g., Department of Defense"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={newSolicitationData.title}
-                  onChange={(e) => handleNewSolicitationChange('title', e.target.value)}
-                  placeholder="Enter solicitation title"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newSolicitationData.description}
-                  onChange={(e) => handleNewSolicitationChange('description', e.target.value)}
-                  placeholder="Enter detailed description"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="dueDate">Proposal Due Date</Label>
-                  <Input
-                    id="dueDate"
-                    type="datetime-local"
-                    value={newSolicitationData.dueDate}
-                    onChange={(e) => handleNewSolicitationChange('dueDate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="questionCutoffDate">Question Cutoff</Label>
-                  <Input
-                    id="questionCutoffDate"
-                    type="datetime-local"
-                    value={newSolicitationData.questionCutoffDate}
-                    onChange={(e) => handleNewSolicitationChange('questionCutoffDate', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="proposalCutoffDate">Proposal Cutoff</Label>
-                  <Input
-                    id="proposalCutoffDate"
-                    type="datetime-local"
-                    value={newSolicitationData.proposalCutoffDate}
-                    onChange={(e) => handleNewSolicitationChange('proposalCutoffDate', e.target.value)}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleNewSolicitationChange('status', value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowCreateSolicitation(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={() => createSolicitation(newSolicitationData)}
-                  disabled={!newSolicitationData.number || !newSolicitationData.title || !newSolicitationData.description}
-                >
-                  Create Solicitation
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {showCreateSolicitation && <CreateSolicitationForm />}
 
         {showEditSolicitation && (
           <Card>
