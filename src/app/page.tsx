@@ -3556,6 +3556,8 @@ const ArcPortal = () => {
   const ProposalDetailView = ({ proposal, onBack, onUpdate, userType }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void, userType: string }) => {
     const solicitation = solicitations.find(s => s.id === proposal.solicitationId);
     const [isEditing, setIsEditing] = useState(false);
+    const [isEditingAdminNotes, setIsEditingAdminNotes] = useState(false);
+    const [adminNotesText, setAdminNotesText] = useState((proposal as any).adminNotes || '');
     const [editData, setEditData] = useState({
       technicalFiles: proposal.technicalFiles || [],
       pastPerformanceFiles: proposal.pastPerformanceFiles || [],
@@ -3602,6 +3604,11 @@ const ArcPortal = () => {
       setIsEditing(false);
     };
 
+    const handleSaveAdminNotes = () => {
+      onUpdate(proposal.id, { ...proposal, adminNotes: adminNotesText });
+      setIsEditingAdminNotes(false);
+    };
+
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -3624,7 +3631,7 @@ const ArcPortal = () => {
               {proposal.status.replace('_', ' ').toUpperCase()}
             </Badge>
             
-            {userType === 'admin' && !isEditing && (
+            {userType === 'vendor' && !isEditing && (
               <Button 
                 onClick={() => setIsEditing(true)} 
                 className="bg-blue-600 hover:bg-blue-700"
@@ -3633,18 +3640,6 @@ const ArcPortal = () => {
                 Edit Proposal
               </Button>
             )}
-            
-            {/* Temporary debug button - always visible */}
-            <Button 
-              onClick={() => {
-                console.log('Debug: userType =', userType, 'isEditing =', isEditing);
-                setIsEditing(true);
-              }} 
-              variant="outline"
-              className="border-red-500 text-red-500"
-            >
-              Debug Edit
-            </Button>
           </div>
         </div>
 
@@ -3699,7 +3694,7 @@ const ArcPortal = () => {
             <CardTitle>Technical Proposal Files</CardTitle>
           </CardHeader>
           <CardContent>
-            {isEditing ? (
+            {isEditing && userType === 'vendor' ? (
               <div className="space-y-4">
                 <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                   <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
@@ -3788,7 +3783,7 @@ const ArcPortal = () => {
             <CardTitle>Past Performance Files</CardTitle>
           </CardHeader>
           <CardContent>
-            {isEditing ? (
+            {isEditing && userType === 'vendor' ? (
               <div className="space-y-4">
                 <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center">
                   <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
@@ -3893,9 +3888,46 @@ const ArcPortal = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" />
-              Internal Admin Notes
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-blue-600" />
+                Internal Admin Notes
+              </div>
+              {userType === 'admin' && (
+                <div className="flex gap-2">
+                  {isEditingAdminNotes ? (
+                    <>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          setAdminNotesText((proposal as any).adminNotes || '');
+                          setIsEditingAdminNotes(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={handleSaveAdminNotes}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        Save
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setIsEditingAdminNotes(true)}
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardTitle>
             <CardDescription>
               Private notes for internal use only. Not visible to vendors.
@@ -3903,10 +3935,10 @@ const ArcPortal = () => {
           </CardHeader>
           <CardContent>
             {userType === 'admin' ? (
-              isEditing ? (
+              isEditingAdminNotes ? (
                 <Textarea
-                  value={editData.adminNotes}
-                  onChange={(e) => setEditData(prev => ({ ...prev, adminNotes: e.target.value }))}
+                  value={adminNotesText}
+                  onChange={(e) => setAdminNotesText(e.target.value)}
                   placeholder="Add internal notes about this proposal (evaluation comments, follow-up items, etc.)..."
                   rows={4}
                   className="border-blue-200 focus:border-blue-400"
@@ -3928,7 +3960,7 @@ const ArcPortal = () => {
           </CardContent>
         </Card>
 
-        {isEditing && (
+        {isEditing && userType === 'vendor' && (
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setIsEditing(false)}>
               Cancel
