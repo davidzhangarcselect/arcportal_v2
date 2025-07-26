@@ -942,7 +942,10 @@ const ArcPortal = () => {
             </CardContent>
             <div className="px-6 pb-4">
               <div className="text-xs text-gray-500 text-center">
-                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-80175ad'} • {new Date().toLocaleString()}
+                {process.env.NODE_ENV === 'development' 
+                  ? 'v1.0-dev' 
+                  : `v1.0-${process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'unknown'}`
+                } • {new Date().toLocaleString()}
               </div>
             </div>
           </Card>
@@ -1209,8 +1212,7 @@ const ArcPortal = () => {
       questionCutoffDate: '',
       proposalCutoffDate: '',
       status: 'open' as 'open' | 'closed',
-      technicalRequirements: [{ title: '', instructions: '' }],
-      pastPerformanceRequirements: [{ title: '', instructions: '' }],
+
           evaluationPeriods: [{ id: 'base_period_1', name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }],
           periodClins: { 'base_period_1': [{ id: 'clin_base_1', name: '0001', description: 'Base Contract Line Item', pricingModel: 'FFP' }] } as { [key: string]: any[] } as { [key: string]: any[] }    });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1219,26 +1221,7 @@ const ArcPortal = () => {
       setFormData(prev => ({ ...prev, [field]: value }));
     }, []);
 
-    const handleRequirementChange = useCallback((type: 'technicalRequirements' | 'pastPerformanceRequirements', index: number, field: 'title' | 'instructions', value: string) => {
-      setFormData(prev => ({
-        ...prev,
-        [type]: prev[type].map((req, i) => i === index ? { ...req, [field]: value } : req)
-      }));
-    }, []);
 
-    const addRequirement = useCallback((type: 'technicalRequirements' | 'pastPerformanceRequirements') => {
-      setFormData(prev => ({
-        ...prev,
-        [type]: [...prev[type], { title: '', instructions: '' }]
-      }));
-    }, []);
-
-    const removeRequirement = useCallback((type: 'technicalRequirements' | 'pastPerformanceRequirements', index: number) => {
-      setFormData(prev => ({
-        ...prev,
-        [type]: prev[type].filter((_, i) => i !== index)
-      }));
-    }, []);
 
     const handlePeriodChange = useCallback((periodId: string, field: 'name' | 'type' | 'startDate' | 'endDate', value: string) => {
       setFormData(prev => ({
@@ -1354,8 +1337,7 @@ const ArcPortal = () => {
           questionCutoffDate: '',
           proposalCutoffDate: '',
           status: 'open',
-          technicalRequirements: [{ title: '', instructions: '' }],
-          pastPerformanceRequirements: [{ title: '', instructions: '' }],
+
       evaluationPeriods: [{ id: 'base_period_1', name: 'Base Period', type: 'BASE', startDate: '', endDate: '' }],
       periodClins: { 'base_period_1': [{ id: 'clin_base_1', name: '0001', description: 'Base Contract Line Item', pricingModel: 'FFP' }] }        });
       } finally {
@@ -1431,110 +1413,7 @@ const ArcPortal = () => {
               />
             </div>
           </div>
-          
-          {/* Technical Requirements Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-lg font-semibold">Technical Requirements</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={() => addRequirement('technicalRequirements')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Document Requirement
-              </Button>
-            </div>
-            {formData.technicalRequirements.map((req, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Document {index + 1}</Label>
-                  {formData.technicalRequirements.length > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => removeRequirement('technicalRequirements', index)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor={`tech-title-${index}`}>Document Title</Label>
-                  <Input
-                    id={`tech-title-${index}`}
-                    value={req.title}
-                    onChange={(e) => handleRequirementChange('technicalRequirements', index, 'title', e.target.value)}
-                    placeholder="e.g., Technical Approach Document"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`tech-instructions-${index}`}>Instructions & Requirements</Label>
-                  <Textarea
-                    id={`tech-instructions-${index}`}
-                    value={req.instructions}
-                    onChange={(e) => handleRequirementChange('technicalRequirements', index, 'instructions', e.target.value)}
-                    placeholder="Provide detailed instructions for this document upload..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
 
-          {/* Past Performance Requirements Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-lg font-semibold">Past Performance Requirements</Label>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm"
-                onClick={() => addRequirement('pastPerformanceRequirements')}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Document Requirement
-              </Button>
-            </div>
-            {formData.pastPerformanceRequirements.map((req, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">Document {index + 1}</Label>
-                  {formData.pastPerformanceRequirements.length > 1 && (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => removeRequirement('pastPerformanceRequirements', index)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor={`past-title-${index}`}>Document Title</Label>
-                  <Input
-                    id={`past-title-${index}`}
-                    value={req.title}
-                    onChange={(e) => handleRequirementChange('pastPerformanceRequirements', index, 'title', e.target.value)}
-                    placeholder="e.g., Past Performance Reference"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`past-instructions-${index}`}>Instructions & Requirements</Label>
-                  <Textarea
-                    id={`past-instructions-${index}`}
-                    value={req.instructions}
-                    onChange={(e) => handleRequirementChange('pastPerformanceRequirements', index, 'instructions', e.target.value)}
-                    placeholder="Provide detailed instructions for this document upload..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Pricing Setup - Evaluation Periods & CLINs */}
           <div className="space-y-6">
