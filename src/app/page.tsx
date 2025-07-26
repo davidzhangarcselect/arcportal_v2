@@ -660,7 +660,9 @@ const ArcPortal = () => {
         body: JSON.stringify({
           vendorId: proposalData.vendorId || currentUser?.id,
           solicitationId: proposalData.solicitationId,
-          notes: ''
+          notes: '',
+          technicalFiles: proposalData.technicalFiles || [],
+          pastPerformanceFiles: proposalData.pastPerformanceFiles || []
         }),
       });
 
@@ -672,7 +674,9 @@ const ArcPortal = () => {
           vendorId: newProposal.vendorId,
           submissionDate: new Date(newProposal.submissionDate).toISOString().split('T')[0],
           status: newProposal.status.toLowerCase(),
-          notes: newProposal.notes || ''
+          notes: newProposal.notes || '',
+          technicalFiles: newProposal.technicalFiles || [],
+          pastPerformanceFiles: newProposal.pastPerformanceFiles || []
         };
         
         setProposals([...proposals, formattedProposal]);
@@ -3333,6 +3337,7 @@ const ArcPortal = () => {
           proposal={selectedProposal}
           onBack={() => setSelectedProposal(null)}
           onUpdate={updateProposal}
+          userType={userType}
         />
       );
     }
@@ -3423,7 +3428,7 @@ const ArcPortal = () => {
   };
 
   // Proposal Detail View Component
-  const ProposalDetailView = ({ proposal, onBack, onUpdate }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void }) => {
+  const ProposalDetailView = ({ proposal, onBack, onUpdate, userType }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void, userType: string }) => {
     const solicitation = solicitations.find(s => s.id === proposal.solicitationId);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState({
@@ -3463,7 +3468,7 @@ const ArcPortal = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onBack}>
-              ← Back to My Proposals
+              ← Back to {userType === 'admin' ? 'Proposal Review' : 'My Proposals'}
             </Button>
             <div>
               <h2 className="text-2xl font-bold">Proposal #{proposal.id}</h2>
@@ -3479,7 +3484,7 @@ const ArcPortal = () => {
             }>
               {proposal.status.replace('_', ' ').toUpperCase()}
             </Badge>
-            {proposal.status === 'submitted' && !isEditing && (
+            {proposal.status === 'submitted' && !isEditing && userType !== 'admin' && (
               <Button onClick={() => setIsEditing(true)} variant="outline">
                 <FileText className="h-4 w-4 mr-2" />
                 Edit Proposal
@@ -3689,6 +3694,7 @@ const ArcPortal = () => {
           proposal={selectedProposal}
           onBack={() => setSelectedProposal(null)}
           onUpdate={updateProposal}
+          userType={userType}
         />
       );
     }

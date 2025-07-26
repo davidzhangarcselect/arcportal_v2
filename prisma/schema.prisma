@@ -17,9 +17,9 @@ model User {
   companyName         String?
   ueiNumber           String?
   socioEconomicStatus String[]
+  pricingData         PricingData[]
   proposals           Proposal[]
   questions           Question[]
-  pricingData         PricingData[]
 
   @@map("users")
 }
@@ -34,13 +34,13 @@ model Solicitation {
   questionCutoffDate DateTime?
   proposalCutoffDate DateTime?
   status             SolicitationStatus @default(OPEN)
-  evaluationPeriods  Json?
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
+  evaluationPeriods  Json?
   clins              Clin[]
+  periods            Period[]
   proposals          Proposal[]
   questions          Question[]
-  periods            Period[]
 
   @@map("solicitations")
 }
@@ -50,28 +50,30 @@ model Clin {
   name           String
   description    String
   pricingModel   PricingModel
-  periodId       String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   solicitationId String
-  solicitation   Solicitation  @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  periodId       String
   period         Period        @relation(fields: [periodId], references: [id])
+  solicitation   Solicitation  @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
   pricingData    PricingData[]
 
   @@map("clins")
 }
 
 model Proposal {
-  id             String         @id @default(cuid())
-  status         ProposalStatus @default(SUBMITTED)
-  submissionDate DateTime       @default(now())
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  vendorId       String
-  solicitationId String
-  solicitation   Solicitation   @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
-  vendor         User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  id                   String         @id @default(cuid())
+  status               ProposalStatus @default(SUBMITTED)
+  submissionDate       DateTime       @default(now())
+  notes                String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  vendorId             String
+  solicitationId       String
+  pastPerformanceFiles Json?
+  technicalFiles       Json?
+  solicitation         Solicitation   @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  vendor               User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@map("proposals")
 }
@@ -103,8 +105,8 @@ model Period {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   solicitationId String
-  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
   clins          Clin[]
+  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
 
   @@map("periods")
 }
@@ -116,14 +118,14 @@ model Question {
   status          QuestionStatus @default(DRAFT)
   dateAsked       DateTime       @default(now())
   dateAnswered    DateTime?
-  dateSubmitted   DateTime?
-  datePosted      DateTime?
-  isQuestionDraft Boolean        @default(true)
-  isAnswerDraft   Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   vendorId        String
   solicitationId  String
+  datePosted      DateTime?
+  dateSubmitted   DateTime?
+  isAnswerDraft   Boolean        @default(true)
+  isQuestionDraft Boolean        @default(true)
   solicitation    Solicitation   @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
   vendor          User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 

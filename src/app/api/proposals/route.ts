@@ -38,7 +38,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { vendorId, solicitationId, notes } = body
+    const { vendorId, solicitationId, notes, technicalFiles, pastPerformanceFiles } = body
 
     // Check if solicitation exists and get cutoff date
     const solicitation = await prisma.solicitation.findUnique({
@@ -78,7 +78,9 @@ export async function POST(request: Request) {
       data: {
         vendorId,
         solicitationId,
-        notes
+        notes,
+        technicalFiles: technicalFiles || [],
+        pastPerformanceFiles: pastPerformanceFiles || []
       },
       include: {
         vendor: {
