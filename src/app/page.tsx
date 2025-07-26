@@ -3633,6 +3633,18 @@ const ArcPortal = () => {
                 Edit Proposal
               </Button>
             )}
+            
+            {/* Temporary debug button - always visible */}
+            <Button 
+              onClick={() => {
+                console.log('Debug: userType =', userType, 'isEditing =', isEditing);
+                setIsEditing(true);
+              }} 
+              variant="outline"
+              className="border-red-500 text-red-500"
+            >
+              Debug Edit
+            </Button>
           </div>
         </div>
 
