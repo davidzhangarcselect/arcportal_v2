@@ -150,7 +150,7 @@ export async function PUT(request: Request) {
     if (questionCutoffDate !== undefined) updateData.questionCutoffDate = new Date(questionCutoffDate);
     if (proposalCutoffDate !== undefined) updateData.proposalCutoffDate = new Date(proposalCutoffDate);
     if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) updateData.status = status.toUpperCase();
 
     const solicitation = await prisma.solicitation.update({
       where: { id },
