@@ -46,7 +46,10 @@ const ArcPortal = () => {
     agency: '',
     questionCutoffDate: '',
     proposalCutoffDate: '',
-    status: 'open' as 'open' | 'closed'
+    status: 'open' as 'open' | 'closed',
+    evaluationPeriods: [] as any[],
+    technicalRequirements: [] as any[],
+    pastPerformanceRequirements: [] as any[]
   });
   
   // Cutoff utility functions
@@ -627,10 +630,12 @@ const ArcPortal = () => {
           title: '',
           description: '',
           agency: '',
-
           questionCutoffDate: '',
           proposalCutoffDate: '',
-          status: 'open'
+          status: 'open',
+          evaluationPeriods: [],
+          technicalRequirements: [],
+          pastPerformanceRequirements: []
         });
         alert('Solicitation updated successfully!');
       } else {
@@ -652,10 +657,12 @@ const ArcPortal = () => {
       title: solicitation.title,
       description: solicitation.description,
       agency: solicitation.agency,
-
       questionCutoffDate: solicitation.questionCutoffDate ? new Date(solicitation.questionCutoffDate).toISOString().slice(0, 16) : '',
       proposalCutoffDate: solicitation.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toISOString().slice(0, 16) : '',
-      status: solicitation.status.toLowerCase() as 'open' | 'closed'
+      status: solicitation.status.toLowerCase() as 'open' | 'closed',
+      evaluationPeriods: solicitation.evaluationPeriods || [],
+      technicalRequirements: solicitation.technicalRequirements || [],
+      pastPerformanceRequirements: solicitation.pastPerformanceRequirements || []
     });
     setShowEditSolicitation(true);
   };

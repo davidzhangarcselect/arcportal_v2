@@ -187,7 +187,16 @@ export async function PUT(request: Request) {
 
     if (questionCutoffDate !== undefined) updateData.questionCutoffDate = new Date(questionCutoffDate);
     if (proposalCutoffDate !== undefined) updateData.proposalCutoffDate = new Date(proposalCutoffDate);
-    if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
+    if (evaluationPeriods !== undefined) {
+      // Handle evaluationPeriods - ensure it's properly stringified
+      if (typeof evaluationPeriods === 'string') {
+        updateData.evaluationPeriods = evaluationPeriods;
+      } else if (evaluationPeriods === null) {
+        updateData.evaluationPeriods = null;
+      } else {
+        updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
+      }
+    }
     if (technicalRequirements !== undefined) updateData.technicalRequirements = technicalRequirements;
     if (pastPerformanceRequirements !== undefined) updateData.pastPerformanceRequirements = pastPerformanceRequirements;
     if (status !== undefined) updateData.status = status.toUpperCase();
