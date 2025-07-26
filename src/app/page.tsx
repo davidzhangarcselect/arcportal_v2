@@ -133,9 +133,24 @@ const ArcPortal = () => {
              questionCutoffDate: s.questionCutoffDate ? new Date(s.questionCutoffDate).toISOString().slice(0, 16) : undefined,
              proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
              status: s.status.toLowerCase(),
-              evaluationPeriods: s.evaluationPeriods ? 
-                (typeof s.evaluationPeriods === 'string' ? JSON.parse(s.evaluationPeriods) : s.evaluationPeriods) : 
-                [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }],             attachments: [
+              evaluationPeriods: (() => {
+                try {
+                  if (s.evaluationPeriods) {
+                    if (typeof s.evaluationPeriods === 'string') {
+                      if (s.evaluationPeriods === '[object Object]') {
+                        console.warn('⚠️ Found "[object Object]" in initial data load, using default periods');
+                        return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                      }
+                      return JSON.parse(s.evaluationPeriods);
+                    }
+                    return s.evaluationPeriods;
+                  }
+                  return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                } catch (error) {
+                  console.error('❌ Error parsing evaluationPeriods in initial load:', error, 'Raw data:', s.evaluationPeriods);
+                  return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                }
+              })(),             attachments: [
                { name: 'Statement of Work.pdf', size: '2.3 MB' },
                { name: 'Technical Requirements.docx', size: '1.1 MB' }
              ]
@@ -660,7 +675,24 @@ const ArcPortal = () => {
       questionCutoffDate: solicitation.questionCutoffDate ? new Date(solicitation.questionCutoffDate).toISOString().slice(0, 16) : '',
       proposalCutoffDate: solicitation.proposalCutoffDate ? new Date(solicitation.proposalCutoffDate).toISOString().slice(0, 16) : '',
       status: solicitation.status.toLowerCase() as 'open' | 'closed',
-      evaluationPeriods: solicitation.evaluationPeriods || [],
+      evaluationPeriods: (() => {
+        try {
+          if (solicitation.evaluationPeriods) {
+            if (typeof solicitation.evaluationPeriods === 'string') {
+              if (solicitation.evaluationPeriods === '[object Object]') {
+                console.warn('⚠️ Found "[object Object]" in startEditSolicitation, using default periods');
+                return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+              }
+              return JSON.parse(solicitation.evaluationPeriods);
+            }
+            return solicitation.evaluationPeriods;
+          }
+          return [];
+        } catch (error) {
+          console.error('❌ Error parsing evaluationPeriods in startEditSolicitation:', error, 'Raw data:', solicitation.evaluationPeriods);
+          return [];
+        }
+      })(),
       technicalRequirements: solicitation.technicalRequirements || [],
       pastPerformanceRequirements: solicitation.pastPerformanceRequirements || []
     });
@@ -2183,11 +2215,24 @@ const ArcPortal = () => {
                 <div className="space-y-3">
                   {solicitation.clins.map(clin => {
                     // Get periods from solicitation data
-                    const periods = solicitation.evaluationPeriods 
-                      ? (typeof solicitation.evaluationPeriods === 'string' 
-                          ? JSON.parse(solicitation.evaluationPeriods) 
-                          : solicitation.evaluationPeriods)
-                      : [];
+                    const periods = (() => {
+                      try {
+                        if (solicitation.evaluationPeriods) {
+                          if (typeof solicitation.evaluationPeriods === 'string') {
+                            if (solicitation.evaluationPeriods === '[object Object]') {
+                              console.warn('⚠️ Found "[object Object]" in CLIN display, using empty periods');
+                              return [];
+                            }
+                            return JSON.parse(solicitation.evaluationPeriods);
+                          }
+                          return solicitation.evaluationPeriods;
+                        }
+                        return [];
+                      } catch (error) {
+                        console.error('❌ Error parsing evaluationPeriods in CLIN display:', error, 'Raw data:', solicitation.evaluationPeriods);
+                        return [];
+                      }
+                    })();
                     const period = periods.find((p: any) => p.id === clin.periodId);
                     
                     return (
@@ -3017,9 +3062,21 @@ const ArcPortal = () => {
                 questionCutoffDate: foundSolicitation.questionCutoffDate ? new Date(foundSolicitation.questionCutoffDate).toISOString().slice(0, 16) : undefined,
                 proposalCutoffDate: foundSolicitation.proposalCutoffDate ? new Date(foundSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
                 status: foundSolicitation.status.toLowerCase(),
-                evaluationPeriods: foundSolicitation.evaluationPeriods ? JSON.parse(foundSolicitation.evaluationPeriods) : [
-                  { id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }
-                ],
+                evaluationPeriods: (() => {
+                  try {
+                    if (foundSolicitation.evaluationPeriods) {
+                      if (foundSolicitation.evaluationPeriods === '[object Object]') {
+                        console.warn('⚠️ Found "[object Object]" in API response, using default periods');
+                        return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                      }
+                      return JSON.parse(foundSolicitation.evaluationPeriods);
+                    }
+                    return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                  } catch (error) {
+                    console.error('❌ Error parsing evaluationPeriods in API response:', error, 'Raw data:', foundSolicitation.evaluationPeriods);
+                    return [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+                  }
+                })(),
                 attachments: [
                   { name: 'Statement of Work.pdf', size: '2.3 MB' },
                   { name: 'Technical Requirements.docx', size: '1.1 MB' }
@@ -3062,11 +3119,27 @@ const ArcPortal = () => {
         console.log('📋 Raw solicitation.clins:', solicitation.clins);
         
         // Load evaluation periods from solicitation or use defaults
-        const periods = solicitation.evaluationPeriods 
-          ? (typeof solicitation.evaluationPeriods === 'string' 
-              ? JSON.parse(solicitation.evaluationPeriods) 
-              : solicitation.evaluationPeriods)
-          : [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+        let periods;
+        try {
+          if (solicitation.evaluationPeriods) {
+            if (typeof solicitation.evaluationPeriods === 'string') {
+              // Check if it's already valid JSON or if it's "[object Object]"
+              if (solicitation.evaluationPeriods === '[object Object]') {
+                console.warn('⚠️ Found "[object Object]" in evaluationPeriods, using default periods');
+                periods = [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+              } else {
+                periods = JSON.parse(solicitation.evaluationPeriods);
+              }
+            } else {
+              periods = solicitation.evaluationPeriods;
+            }
+          } else {
+            periods = [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+          }
+        } catch (error) {
+          console.error('❌ Error parsing evaluationPeriods:', error, 'Raw data:', solicitation.evaluationPeriods);
+          periods = [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
+        }
         
         console.log('📅 Parsed evaluation periods:', periods);
         setEvaluationPeriods(periods);
