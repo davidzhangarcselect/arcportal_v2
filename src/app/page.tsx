@@ -929,7 +929,7 @@ const ArcPortal = () => {
             </CardContent>
             <div className="px-6 pb-4">
               <div className="text-xs text-gray-500 text-center">
-                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-fedb0e2'} • {new Date().toLocaleDateString()}
+                {process.env.NODE_ENV === 'development' ? 'v1.0-dev' : 'v1.0-fedb0e2'} • {new Date().toLocaleString()}
               </div>
             </div>
           </Card>
