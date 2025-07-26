@@ -105,7 +105,12 @@ const ArcPortal = () => {
     const loadData = async () => {
       try {
         // Load solicitations
-        const solicitationsResponse = await fetch('/api/solicitations');
+        const solicitationsResponse = await fetch('/api/solicitations', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         if (solicitationsResponse.ok) {
           const solicitationsData = await solicitationsResponse.json();
            setSolicitations(solicitationsData.map((s: any) => ({
@@ -1150,7 +1155,7 @@ const ArcPortal = () => {
   // Solicitations Component
   const SolicitationsView = () => {
     if (selectedSolicitation) {
-      return <SolicitationDetail solicitation={selectedSolicitation} activeTab={solicitationActiveTab} setActiveTab={setSolicitationActiveTab} />;
+      return <SolicitationDetail solicitation={selectedSolicitation} activeTab={solicitationActiveTab} setActiveTab={setSolicitationActiveTab} onSolicitationRefresh={setSelectedSolicitation} />;
     }
     return (
       <div className="space-y-6">
@@ -1446,7 +1451,8 @@ const ArcPortal = () => {
 
 
   // Solicitation Detail Component
-  const SolicitationDetail = ({ solicitation, activeTab, setActiveTab }: { solicitation: SampleSolicitation, activeTab: string, setActiveTab: (tab: string) => void }) => {
+  const SolicitationDetail = ({ solicitation, activeTab, setActiveTab, onSolicitationRefresh }: { solicitation: SampleSolicitation, activeTab: string, setActiveTab: (tab: string) => void, onSolicitationRefresh: (solicitation: SampleSolicitation) => void }) => {
+    console.log('🔧 SolicitationDetail received onSolicitationRefresh:', typeof onSolicitationRefresh);
     const [newQuestion, setNewQuestion] = useState('');
     const solicitationQuestions = questions.filter(q => q.solicitationId === solicitation.id);
     const [newAnswer, setNewAnswer] = useState('');
@@ -1996,7 +2002,7 @@ const ArcPortal = () => {
           </TabsContent>
 
           <TabsContent value="pricing" className="space-y-4">
-            <PriceEvaluationTool solicitation={solicitation} />
+            <PriceEvaluationTool solicitationId={solicitation.id} />
           </TabsContent>
 
           {userType === 'vendor' && !isProposalCutoffPassed(solicitation) && (
@@ -2322,10 +2328,66 @@ const ArcPortal = () => {
   };
 
   // Price Evaluation Tool Component
-  const PriceEvaluationTool = ({ solicitation }: { solicitation: SampleSolicitation }) => {
+  const PriceEvaluationTool = ({ solicitationId }: { solicitationId: string }) => {
+    const [solicitation, setSolicitation] = useState<SampleSolicitation | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [evaluationPeriods, setEvaluationPeriods] = useState<any[]>([
       { id: 'base_year_1', name: 'Base Year', type: 'base' }
     ]);
+
+    // Fetch fresh solicitation data from database
+    useEffect(() => {
+      const fetchSolicitationData = async () => {
+        console.log('🔄 FETCHING FRESH DATA (trigger:', refreshTrigger, ') for solicitation:', solicitationId);
+        setLoading(true);
+        
+        try {
+          const response = await fetch('/api/solicitations', {
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
+          if (response.ok) {
+            const solicitationsData = await response.json();
+            const foundSolicitation = solicitationsData.find((s: any) => s.id === solicitationId);
+            
+            if (foundSolicitation) {
+              // Format the solicitation data
+              const formattedSolicitation = {
+                ...foundSolicitation,
+                dueDate: new Date(foundSolicitation.dueDate).toISOString().split('T')[0],
+                questionCutoffDate: foundSolicitation.questionCutoffDate ? new Date(foundSolicitation.questionCutoffDate).toISOString().slice(0, 16) : undefined,
+                proposalCutoffDate: foundSolicitation.proposalCutoffDate ? new Date(foundSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
+                status: foundSolicitation.status.toLowerCase(),
+                evaluationPeriods: foundSolicitation.evaluationPeriods ? JSON.parse(foundSolicitation.evaluationPeriods) : [
+                  { id: 'base_year_1', name: 'Base Year', type: 'base' }
+                ],
+                attachments: [
+                  { name: 'Statement of Work.pdf', size: '2.3 MB' },
+                  { name: 'Technical Requirements.docx', size: '1.1 MB' }
+                ]
+              };
+              
+              console.log('✅ REFRESH COMPLETE (trigger:', refreshTrigger, ') - CLINs count:', foundSolicitation.clins?.length || 0);
+              console.log('🔄 Setting solicitation state with fresh data...');
+              setSolicitation(formattedSolicitation);
+            } else {
+              console.error('❌ Solicitation not found:', solicitationId);
+            }
+          } else {
+            console.error('❌ Failed to fetch solicitations');
+          }
+        } catch (error) {
+          console.error('❌ Error fetching solicitation data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSolicitationData();
+    }, [solicitationId, refreshTrigger]);
     const [periodClins, setPeriodClins] = useState<{[periodId: string]: any[]}>({});
     const [pricingData, setPricingData] = useState<any>({});
     const [activeTab, setActiveTab] = useState(userType === 'admin' ? 'setup' : 'pricing');
@@ -2448,7 +2510,10 @@ const ArcPortal = () => {
 
         console.log('📤 Sending to API - evaluationPeriods:', evaluationPeriods);
         console.log('📤 Sending to API - allClins:', allClins);
+        console.log('📤 Total CLINs being sent:', allClins.length);
 
+        console.log('🚀 Making API call to /api/solicitations...');
+        
         const response = await fetch('/api/solicitations', {
           method: 'PUT',
           headers: {
@@ -2461,27 +2526,43 @@ const ArcPortal = () => {
           }),
         });
 
+        console.log('📡 API Response received - Status:', response.status, 'OK:', response.ok);
+
         if (response.ok) {
-          // Update the original setup to reflect saved state - this prevents the "unsaved changes" indicator
-          setOriginalSetup({
-            periodClins: JSON.parse(JSON.stringify(periodClins)),
-            evaluationPeriods: JSON.parse(JSON.stringify(evaluationPeriods))
+          console.log('✅ API Response is OK - Processing success...');
+          const responseData = await response.json();
+          console.log('📄 Response data:', responseData);
+          
+          console.log('💾 Save successful! 🔄 SAVE TRIGGERED REFRESH');
+          
+          // Small delay to ensure database transaction completes
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Trigger fresh data fetch by incrementing refresh counter
+          console.log('🔄 Incrementing refresh trigger...');
+          setRefreshTrigger(prev => {
+            console.log('🔄 Refresh trigger updated from', prev, 'to', prev + 1);
+            return prev + 1;
           });
+          
           setHasUnsavedChanges(false);
-          
-          // Don't update the parent solicitations array to avoid triggering useEffect
-          // The current state (periodClins, evaluationPeriods) already reflects what we want
-          
           alert('Setup saved successfully!');
         } else {
+          console.error('❌ API Response not OK - Status:', response.status);
           const errorData = await response.text();
-          console.error('Failed to save setup:', errorData);
+          console.error('❌ Error response body:', errorData);
           alert(`Failed to save setup: ${errorData}`);
         }
       } catch (error) {
-        console.error('Error saving setup:', error);
-        alert('Network error while saving setup');
+        console.error('❌ NETWORK ERROR during save:', error);
+        console.error('❌ Error details:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : 'Unknown'
+        });
+        alert('Network error while saving setup: ' + (error instanceof Error ? error.message : String(error)));
       } finally {
+        console.log('🏁 Save operation completed, setting isSaving to false');
         setIsSaving(false);
       }
     };
@@ -2663,6 +2744,18 @@ const ArcPortal = () => {
       };
       return <Badge variant={variants[model] || 'default'}>{model}</Badge>;
     };
+
+    // Show loading state while fetching data
+    if (loading || !solicitation) {
+      return (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-gray-600">Loading fresh data from database...</p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
