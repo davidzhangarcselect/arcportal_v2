@@ -93,6 +93,19 @@ export interface EvaluationPeriod {
   id: string;
   name: string;
   type: 'base' | 'option';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface Period {
+  id: string;
+  name: string;
+  type: 'BASE' | 'OPTION';
+  startDate: Date;
+  endDate: Date;
+  solicitationId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface SampleClin {

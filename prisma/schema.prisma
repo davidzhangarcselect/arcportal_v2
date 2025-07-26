@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id                  String     @id @default(cuid())
-  email               String     @unique
+  id                  String        @id @default(cuid())
+  email               String        @unique
   name                String?
-  role                UserRole   @default(VENDOR)
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  role                UserRole      @default(VENDOR)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
   companyName         String?
   ueiNumber           String?
   socioEconomicStatus String[]
   proposals           Proposal[]
   questions           Question[]
+  pricingData         PricingData[]
 
   @@map("users")
 }
@@ -39,20 +40,23 @@ model Solicitation {
   clins              Clin[]
   proposals          Proposal[]
   questions          Question[]
+  periods            Period[]
 
   @@map("solicitations")
 }
 
 model Clin {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
   description    String
   pricingModel   PricingModel
   periodId       String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   solicitationId String
-  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  solicitation   Solicitation  @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  period         Period        @relation(fields: [periodId], references: [id])
+  pricingData    PricingData[]
 
   @@map("clins")
 }
@@ -70,6 +74,39 @@ model Proposal {
   vendor         User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@map("proposals")
+}
+
+model PricingData {
+  id           String   @id @default(cuid())
+  basePrice    Decimal?
+  laborHours   Int?
+  laborRate    Decimal?
+  materialCost Decimal?
+  indirectRate Decimal?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  clinId       String
+  vendorId     String
+  clin         Clin     @relation(fields: [clinId], references: [id], onDelete: Cascade)
+  vendor       User     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([clinId, vendorId])
+  @@map("pricing_data")
+}
+
+model Period {
+  id             String       @id @default(cuid())
+  name           String
+  type           PeriodType
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  solicitationId String
+  solicitation   Solicitation @relation(fields: [solicitationId], references: [id], onDelete: Cascade)
+  clins          Clin[]
+
+  @@map("periods")
 }
 
 model Question {
@@ -115,6 +152,11 @@ enum ProposalStatus {
   UNDER_REVIEW
   AWARDED
   REJECTED
+}
+
+enum PeriodType {
+  BASE
+  OPTION
 }
 
 enum QuestionStatus {

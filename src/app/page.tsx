@@ -120,8 +120,7 @@ const ArcPortal = () => {
              proposalCutoffDate: s.proposalCutoffDate ? new Date(s.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
              status: s.status.toLowerCase(),
              evaluationPeriods: s.evaluationPeriods ? JSON.parse(s.evaluationPeriods) : [
-               { id: 'base_year_1', name: 'Base Year', type: 'base' }
-             ],
+      { id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }             ],
              attachments: [
                { name: 'Statement of Work.pdf', size: '2.3 MB' },
                { name: 'Technical Requirements.docx', size: '1.1 MB' }
@@ -1709,15 +1708,32 @@ const ArcPortal = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {solicitation.clins.map(clin => (
-                    <div key={clin.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">{clin.name}</p>
-                        <p className="text-sm text-gray-600">{clin.description}</p>
+                  {solicitation.clins.map(clin => {
+                    // Get periods from solicitation data
+                    const periods = solicitation.evaluationPeriods 
+                      ? (typeof solicitation.evaluationPeriods === 'string' 
+                          ? JSON.parse(solicitation.evaluationPeriods) 
+                          : solicitation.evaluationPeriods)
+                      : [];
+                    const period = periods.find((p: any) => p.id === clin.periodId);
+                    
+                    return (
+                      <div key={clin.id} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium">{clin.name}</p>
+                            {period && (
+                              <Badge variant="secondary" className="text-xs">
+                                {period.name}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">{clin.description}</p>
+                        </div>
+                        <Badge variant="outline">{clin.pricingModel}</Badge>
                       </div>
-                      <Badge variant="outline">{clin.pricingModel}</Badge>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -2132,7 +2148,7 @@ const ArcPortal = () => {
             </div>
 
             <div>
-              <Label className="text-base font-medium">Cost Proposal</Label>
+              <Label className="text-base font-medium">Pricing Summary</Label>
               <p className="text-sm text-gray-600 mb-3">Complete your pricing using the integrated tool</p>
               <Alert>
                 <Calculator className="h-4 w-4" />
@@ -2254,7 +2270,7 @@ const ArcPortal = () => {
             </div>
 
             <div>
-              <Label className="text-base font-medium">Cost Proposal</Label>
+              <Label className="text-base font-medium">Pricing Summary</Label>
               <Alert>
                 <Calculator className="h-4 w-4" />
                 <AlertDescription>
@@ -2333,8 +2349,7 @@ const ArcPortal = () => {
     const [loading, setLoading] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [evaluationPeriods, setEvaluationPeriods] = useState<any[]>([
-      { id: 'base_year_1', name: 'Base Year', type: 'base' }
-    ]);
+                  { id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }    ]);
 
     // Fetch fresh solicitation data from database
     useEffect(() => {
@@ -2362,7 +2377,7 @@ const ArcPortal = () => {
                 proposalCutoffDate: foundSolicitation.proposalCutoffDate ? new Date(foundSolicitation.proposalCutoffDate).toISOString().slice(0, 16) : undefined,
                 status: foundSolicitation.status.toLowerCase(),
                 evaluationPeriods: foundSolicitation.evaluationPeriods ? JSON.parse(foundSolicitation.evaluationPeriods) : [
-                  { id: 'base_year_1', name: 'Base Year', type: 'base' }
+                  { id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }
                 ],
                 attachments: [
                   { name: 'Statement of Work.pdf', size: '2.3 MB' },
@@ -2410,7 +2425,7 @@ const ArcPortal = () => {
           ? (typeof solicitation.evaluationPeriods === 'string' 
               ? JSON.parse(solicitation.evaluationPeriods) 
               : solicitation.evaluationPeriods)
-          : [{ id: 'base_year_1', name: 'Base Year', type: 'base' }];
+          : [{ id: 'base_period_1', name: 'Base Period', type: 'base', startDate: '', endDate: '' }];
         
         console.log('📅 Parsed evaluation periods:', periods);
         setEvaluationPeriods(periods);
@@ -2425,7 +2440,7 @@ const ArcPortal = () => {
 
         // Group existing CLINs by period (if they have periodId)
         solicitation.clins.forEach(clin => {
-          const periodId = clin.periodId || 'base_year_1'; // Default to base year if no periodId
+          const periodId = clin.periodId || 'base_period_1'; // Default to base period if no periodId
           console.log(`🔗 Assigning CLIN ${clin.name} to period ${periodId}`);
           if (!clinsByPeriod[periodId]) {
             clinsByPeriod[periodId] = [];
@@ -2476,6 +2491,11 @@ const ArcPortal = () => {
           };
         });
         setPricingData(initialPricing);
+        
+        // Load existing pricing data for vendors
+        if (userType === 'vendor') {
+          loadPricingData();
+        }
       }
     }, [solicitation, currentUser]);
 
@@ -2567,6 +2587,58 @@ const ArcPortal = () => {
       }
     };
 
+    // Load pricing data from database
+    const loadPricingData = async () => {
+      if (!currentUser?.id || !solicitation?.id) return;
+      
+      try {
+        const response = await fetch(`/api/pricing?vendorId=${currentUser.id}&solicitationId=${solicitation.id}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setPricingData(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading pricing data:', error);
+      }
+    };
+
+    // Save pricing data to database
+    const savePricingData = async () => {
+      if (!currentUser?.id || userType !== 'vendor') return;
+      
+      setIsSaving(true);
+      try {
+        const response = await fetch('/api/pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            vendorId: currentUser.id,
+            pricingData: pricingData
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            alert('Pricing data saved successfully!');
+          } else {
+            alert('Failed to save pricing data: ' + result.error);
+          }
+        } else {
+          alert('Failed to save pricing data');
+        }
+      } catch (error) {
+        console.error('Error saving pricing data:', error);
+        alert('Network error while saving pricing data');
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
     // Generate CLIN number based on period and existing CLINs
     const generateClinNumber = (periodId: string, periodType: string) => {
       const existingClins = periodClins[periodId] || [];
@@ -2652,8 +2724,10 @@ const ArcPortal = () => {
       const newId = `period_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const newPeriod = {
         id: newId,
-        name: `Option Year ${evaluationPeriods.filter(p => p.type === 'option').length + 1}`,
-        type: 'option'
+        name: `Option Period ${evaluationPeriods.filter(p => p.type === 'option').length + 1}`,
+        type: 'option',
+        startDate: '',
+        endDate: ''
       };
       setEvaluationPeriods([...evaluationPeriods, newPeriod]);
       
@@ -2792,52 +2866,76 @@ const ArcPortal = () => {
                       Evaluation Periods
                     </CardTitle>
                     <CardDescription>
-                      Configure base year and option periods for this solicitation
-                    </CardDescription>
+                       Configure base period and option periods for this solicitation                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {evaluationPeriods.map(period => (
-                      <div key={period.id} className="flex items-center gap-3 p-3 border rounded-lg bg-white">
-                        <Input
-                          value={period.name}
-                          onChange={(e) => setEvaluationPeriods(prev =>
-                            prev.map(p => p.id === period.id ? { ...p, name: e.target.value } : p)
-                          )}
-                          placeholder="Period Name"
-                          className="flex-1"
-                        />
-                        <Select
-                          value={period.type}
-                          onValueChange={(value) => setEvaluationPeriods(prev =>
-                            prev.map(p => p.id === period.id ? { ...p, type: value } : p)
-                          )}
-                          disabled={period.type === 'base'}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="base">Base Year</SelectItem>
-                            <SelectItem value="option">Option Year</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {period.type === 'option' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeEvaluationPeriod(period.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                     {evaluationPeriods.map(period => (
+                       <div key={period.id} className="space-y-3 p-4 border rounded-lg bg-white">
+                         <div className="flex items-center gap-3">
+                           <Input
+                             value={period.name}
+                             onChange={(e) => setEvaluationPeriods(prev =>
+                               prev.map(p => p.id === period.id ? { ...p, name: e.target.value } : p)
+                             )}
+                             placeholder="Period Name"
+                             className="flex-1"
+                           />
+                           <Select
+                             value={period.type}
+                             onValueChange={(value) => setEvaluationPeriods(prev =>
+                               prev.map(p => p.id === period.id ? { ...p, type: value } : p)
+                             )}
+                             disabled={period.type === 'base'}
+                           >
+                             <SelectTrigger className="w-32">
+                               <SelectValue />
+                             </SelectTrigger>
+                             <SelectContent>
+                               <SelectItem value="base">Base Period</SelectItem>
+                               <SelectItem value="option">Option Period</SelectItem>
+                             </SelectContent>
+                           </Select>
+                           {period.type === 'option' && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => removeEvaluationPeriod(period.id)}
+                               className="text-red-600 hover:text-red-800"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           )}
+                         </div>
+                         <div className="flex items-center gap-3">
+                           <div className="flex-1">
+                             <label className="text-sm font-medium text-gray-700 mb-1 block">Start Date</label>
+                             <Input
+                               type="date"
+                               value={period.startDate || ''}
+                               onChange={(e) => setEvaluationPeriods(prev =>
+                                 prev.map(p => p.id === period.id ? { ...p, startDate: e.target.value } : p)
+                               )}
+                               className="w-full"
+                             />
+                           </div>
+                           <div className="flex-1">
+                             <label className="text-sm font-medium text-gray-700 mb-1 block">End Date</label>
+                             <Input
+                               type="date"
+                               value={period.endDate || ''}
+                               onChange={(e) => setEvaluationPeriods(prev =>
+                                 prev.map(p => p.id === period.id ? { ...p, endDate: e.target.value } : p)
+                               )}
+                               className="w-full"
+                             />
+                           </div>
+                         </div>
+                       </div>
+                      ))}
                     <Button onClick={addEvaluationPeriod} variant="outline" className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Option Year
-                    </Button>
-                  </CardContent>
+                       <Plus className="h-4 w-4 mr-2" />
+                       Add Option Period
+                     </Button>                  </CardContent>
                 </Card>
 
                 {/* CLINs Management by Period */}
@@ -2974,23 +3072,25 @@ const ArcPortal = () => {
                 </Alert>
               )}
 
-              {Object.values(periodClins).flat().map(clin => (
-                <Card key={clin.id}>
-                  <CardHeader>
-                    <div className="flex items-center gap-3 pb-2">
-                      <h4 className="font-medium text-lg">{clin.name}</h4>
-                      <span className="text-gray-600">-</span>
-                      <span className="text-gray-700">{clin.description}</span>
-                      {getPricingModelBadge(clin.pricingModel)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Base Year */}
-                    <div className="space-y-3">
-                      <h5 className="font-medium text-sm text-gray-700 flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Base Year
-                      </h5>
+              {Object.values(periodClins).flat().map(clin => {
+                const period = evaluationPeriods.find(p => p.id === clin.periodId);
+                return (
+                  <Card key={clin.id}>
+                    <CardHeader>
+                      <div className="flex items-center gap-3 pb-2">
+                        <h4 className="font-medium text-lg">{clin.name}</h4>
+                        <span className="text-gray-600">-</span>
+                        <span className="text-gray-700">{clin.description}</span>
+                        {getPricingModelBadge(clin.pricingModel)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Period Information */}
+                      <div className="space-y-3">
+                        <h5 className="font-medium text-sm text-gray-700 flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          {period ? period.name : 'Base Year'}
+                        </h5>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {clin.pricingModel === 'FFP' && (
                           <div className="space-y-2">
@@ -3062,15 +3162,15 @@ const ArcPortal = () => {
                      </div>
                      
                      {/* Real-time CLIN Total */}
-                     <Alert>
-                       <Calculator className="h-4 w-4" />
-                       <AlertDescription>
-                         <strong>CLIN Total: ${calculateClinTotal(clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
-                       </AlertDescription>
-                     </Alert>                  </CardContent>
-                </Card>
-              ))}
-              
+                      <Alert>
+                        <Calculator className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>CLIN Total: ${calculateClinTotal(clin.id).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                        </AlertDescription>
+                      </Alert>                  </CardContent>
+                 </Card>
+                );
+              })}              
               {/* Real-time Grand Total */}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="text-lg font-semibold text-blue-800">
@@ -3078,6 +3178,29 @@ const ArcPortal = () => {
                   Total Evaluated Price: ${calculateGrandTotal().toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </div>
               </div>
+
+              {/* Save Pricing Button for Vendors */}
+              {userType === 'vendor' && (
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={savePricingData}
+                    disabled={isSaving}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Save Pricing Data
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </TabsContent>
 
