@@ -25,21 +25,23 @@ model User {
 }
 
 model Solicitation {
-  id                 String             @id @default(cuid())
-  number             String             @unique
-  title              String
-  agency             String
-  description        String
-  questionCutoffDate DateTime?
-  proposalCutoffDate DateTime?
-  status             SolicitationStatus @default(OPEN)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  evaluationPeriods  Json?
-  clins              Clin[]
-  periods            Period[]
-  proposals          Proposal[]
-  questions          Question[]
+  id                      String             @id @default(cuid())
+  number                  String             @unique
+  title                   String
+  agency                  String
+  description             String
+  questionCutoffDate      DateTime?
+  proposalCutoffDate      DateTime?
+  status                  SolicitationStatus @default(OPEN)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  evaluationPeriods       Json?
+  technicalRequirements   Json?
+  pastPerformanceRequirements Json?
+  clins                   Clin[]
+  periods                 Period[]
+  proposals               Proposal[]
+  questions               Question[]
 
   @@map("solicitations")
 }
