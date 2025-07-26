@@ -3559,7 +3559,8 @@ const ArcPortal = () => {
     const [editData, setEditData] = useState({
       technicalFiles: proposal.technicalFiles || [],
       pastPerformanceFiles: proposal.pastPerformanceFiles || [],
-      notes: proposal.notes || ''
+      notes: proposal.notes || '',
+      adminNotes: (proposal as any).adminNotes || ''
     });
 
     const handleFileUpload = async (type: string, files: FileList | null) => {
@@ -3857,20 +3858,56 @@ const ArcPortal = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Additional Notes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-green-600" />
+              Vendor Notes
+            </CardTitle>
+            <CardDescription>
+              Notes provided by the vendor during proposal submission.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {isEditing ? (
-              <Textarea
-                value={editData.notes}
-                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Any additional information or notes..."
-                rows={4}
-              />
-            ) : (
-              <p className="text-sm">
-                {proposal.notes || 'No additional notes provided.'}
+            <div className="min-h-[60px] p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-900">
+                {proposal.notes || 'No notes provided by vendor.'}
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-600" />
+              Internal Admin Notes
+            </CardTitle>
+            <CardDescription>
+              Private notes for internal use only. Not visible to vendors.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {userType === 'admin' ? (
+              isEditing ? (
+                <Textarea
+                  value={editData.adminNotes}
+                  onChange={(e) => setEditData(prev => ({ ...prev, adminNotes: e.target.value }))}
+                  placeholder="Add internal notes about this proposal (evaluation comments, follow-up items, etc.)..."
+                  rows={4}
+                  className="border-blue-200 focus:border-blue-400"
+                />
+              ) : (
+                <div className="min-h-[60px] p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-900">
+                    {(proposal as any).adminNotes || 'No internal notes added yet.'}
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="p-3 bg-gray-100 border border-gray-200 rounded-md">
+                <p className="text-sm text-gray-600 italic">
+                  Internal admin notes are not visible to vendors.
+                </p>
+              </div>
             )}
           </CardContent>
         </Card>
