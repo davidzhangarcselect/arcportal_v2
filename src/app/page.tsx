@@ -747,12 +747,7 @@ const ArcPortal = () => {
         socioEconomicStatus: [] as string[]
       });
 
-     const handleEditDataChange = useCallback((field: string, value: string | string[]) => {
-       setEditData(prev => ({ ...prev, [field]: value }));
-     }, []);
-
-     const socioEconomicOptions = [
-       'Small Business',
+      const socioEconomicOptions = [       'Small Business',
        'Woman-Owned Small Business (WOSB)',
        'Historically Underutilized Business Zone (HUBZone)',
        'Service-Disabled Veteran-Owned Small Business (SDVOSB)',
@@ -4239,7 +4234,7 @@ const ArcPortal = () => {
                   <Input
                     id="name"
                     value={editData.name}
-                    onChange={(e) => handleEditDataChange('name', e.target.value)}
+                    onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter your full name"
                   />
                 ) : (
@@ -4254,7 +4249,7 @@ const ArcPortal = () => {
                     id="email"
                     type="email"
                     value={editData.email}
-                    onChange={(e) => handleEditDataChange('email', e.target.value)}
+                    onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="Enter your email address"
                   />
                 ) : (
@@ -4284,7 +4279,7 @@ const ArcPortal = () => {
                   <Input
                     id="companyName"
                     value={editData.companyName}
-                    onChange={(e) => handleEditDataChange('companyName', e.target.value)}
+                    onChange={(e) => setEditData(prev => ({ ...prev, companyName: e.target.value }))}
                     placeholder="Enter company name"
                   />
                 ) : (
@@ -4301,7 +4296,7 @@ const ArcPortal = () => {
                   <Input
                     id="ueiNumber"
                     value={editData.ueiNumber}
-                    onChange={(e) => handleEditDataChange('ueiNumber', e.target.value)}
+                    onChange={(e) => setEditData(prev => ({ ...prev, ueiNumber: e.target.value }))}
                     placeholder="12 character UEI"
                     maxLength={12}
                   />
