@@ -89,6 +89,19 @@ const ArcPortal = () => {
   const [solicitations, setSolicitations] = useState<SampleSolicitation[]>([]);
   const [proposals, setProposals] = useState<SampleProposal[]>([]);
   const [questions, setQuestions] = useState<SampleQuestion[]>([]);
+
+  // Memoized form handlers to prevent re-renders
+  const handleNewSolicitationChange = useCallback((field: string, value: string) => {
+    setNewSolicitationData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleEditSolicitationChange = useCallback((field: string, value: string) => {
+    setEditSolicitationData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleProposalDataChange = useCallback((field: string, value: string) => {
+    setProposalData((prev: any) => ({ ...prev, [field]: value }));
+  }, []);
   
   // Shared proposal data state
   const [proposalData, setProposalData] = useState({
@@ -734,15 +747,22 @@ const ArcPortal = () => {
         socioEconomicStatus: [] as string[]
       });
 
-      const socioEconomicOptions = [
-        'Small Business',
-        'Woman-Owned Small Business (WOSB)',
-        'Historically Underutilized Business Zone (HUBZone)',
-        'Service-Disabled Veteran-Owned Small Business (SDVOSB)',
-        'Veteran-Owned Small Business (VOSB)',
-        '8(a) Business Development Program',
-        'Minority-Owned Business'
+     const handleEditDataChange = useCallback((field: string, value: string | string[]) => {
+       setEditData(prev => ({ ...prev, [field]: value }));
+     }, []);
+
+     const socioEconomicOptions = [
+       'Small Business',
+       'Woman-Owned Small Business (WOSB)',
+       'Historically Underutilized Business Zone (HUBZone)',
+       'Service-Disabled Veteran-Owned Small Business (SDVOSB)',
+       'Veteran-Owned Small Business (VOSB)',
+       '8(a) Business Development Program',        'Minority-Owned Business'
       ];
+
+      const handleFormDataChange = useCallback((field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      }, []);
 
       const handleSubmit = async () => {
         if (isRegistering && loginType === 'vendor') {
@@ -839,7 +859,7 @@ const ArcPortal = () => {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => handleFormDataChange('email', e.target.value)}
                     required
                   />
                 </div>
@@ -850,7 +870,7 @@ const ArcPortal = () => {
                     id="password"
                     type="password"
                     value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) => handleFormDataChange('password', e.target.value)}
                     required
                   />
                 </div>
@@ -862,7 +882,7 @@ const ArcPortal = () => {
                       <Input
                         id="companyName"
                         value={formData.companyName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                        onChange={(e) => handleFormDataChange('companyName', e.target.value)}
                         required
                       />
                     </div>
@@ -872,7 +892,7 @@ const ArcPortal = () => {
                       <Input
                         id="ueiNumber"
                         value={formData.ueiNumber}
-                        onChange={(e) => setFormData(prev => ({ ...prev, ueiNumber: e.target.value }))}
+                        onChange={(e) => handleFormDataChange('ueiNumber', e.target.value)}
                         placeholder="12 character UEI"
                         maxLength={12}
                         required
@@ -1221,7 +1241,7 @@ const ArcPortal = () => {
                   <Input
                     id="number"
                     value={newSolicitationData.number}
-                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    onChange={(e) => handleNewSolicitationChange('number', e.target.value)}
                     placeholder="e.g., RFP-2024-001"
                   />
                 </div>
@@ -1230,7 +1250,7 @@ const ArcPortal = () => {
                   <Input
                     id="agency"
                     value={newSolicitationData.agency}
-                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    onChange={(e) => handleNewSolicitationChange('agency', e.target.value)}
                     placeholder="e.g., Department of Defense"
                   />
                 </div>
@@ -1241,7 +1261,7 @@ const ArcPortal = () => {
                 <Input
                   id="title"
                   value={newSolicitationData.title}
-                  onChange={(e) => setNewSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => handleNewSolicitationChange('title', e.target.value)}
                   placeholder="Enter solicitation title"
                 />
               </div>
@@ -1251,7 +1271,7 @@ const ArcPortal = () => {
                 <Textarea
                   id="description"
                   value={newSolicitationData.description}
-                  onChange={(e) => setNewSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => handleNewSolicitationChange('description', e.target.value)}
                   placeholder="Enter detailed description"
                   rows={3}
                 />
@@ -1264,7 +1284,7 @@ const ArcPortal = () => {
                     id="dueDate"
                     type="datetime-local"
                     value={newSolicitationData.dueDate}
-                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => handleNewSolicitationChange('dueDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1273,7 +1293,7 @@ const ArcPortal = () => {
                     id="questionCutoffDate"
                     type="datetime-local"
                     value={newSolicitationData.questionCutoffDate}
-                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                    onChange={(e) => handleNewSolicitationChange('questionCutoffDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1282,14 +1302,14 @@ const ArcPortal = () => {
                     id="proposalCutoffDate"
                     type="datetime-local"
                     value={newSolicitationData.proposalCutoffDate}
-                    onChange={(e) => setNewSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                    onChange={(e) => handleNewSolicitationChange('proposalCutoffDate', e.target.value)}
                   />
                 </div>
               </div>
               
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setNewSolicitationData(prev => ({ ...prev, status: value }))}>
+                <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleNewSolicitationChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1327,7 +1347,7 @@ const ArcPortal = () => {
                   <Input
                     id="edit-number"
                     value={editSolicitationData.number}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('number', e.target.value)}
                     placeholder="e.g., RFP-2024-001"
                   />
                 </div>
@@ -1336,7 +1356,7 @@ const ArcPortal = () => {
                   <Input
                     id="edit-agency"
                     value={editSolicitationData.agency}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('agency', e.target.value)}
                     placeholder="e.g., Department of Defense"
                   />
                 </div>
@@ -1347,7 +1367,7 @@ const ArcPortal = () => {
                 <Input
                   id="edit-title"
                   value={editSolicitationData.title}
-                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => handleEditSolicitationChange('title', e.target.value)}
                   placeholder="Enter solicitation title"
                 />
               </div>
@@ -1357,7 +1377,7 @@ const ArcPortal = () => {
                 <Textarea
                   id="edit-description"
                   value={editSolicitationData.description}
-                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => handleEditSolicitationChange('description', e.target.value)}
                   placeholder="Enter detailed description"
                   rows={3}
                 />
@@ -1370,7 +1390,7 @@ const ArcPortal = () => {
                     id="edit-dueDate"
                     type="datetime-local"
                     value={editSolicitationData.dueDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1379,7 +1399,7 @@ const ArcPortal = () => {
                     id="edit-questionCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.questionCutoffDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('questionCutoffDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1388,14 +1408,14 @@ const ArcPortal = () => {
                     id="edit-proposalCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.proposalCutoffDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('proposalCutoffDate', e.target.value)}
                   />
                 </div>
               </div>
               
               <div>
                 <Label htmlFor="edit-status">Status</Label>
-                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setEditSolicitationData(prev => ({ ...prev, status: value }))}>
+                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleEditSolicitationChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -1548,7 +1568,7 @@ const ArcPortal = () => {
                   <Input
                     id="edit-number"
                     value={editSolicitationData.number}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, number: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('number', e.target.value)}
                     placeholder="e.g., RFP-2024-001"
                   />
                 </div>
@@ -1557,7 +1577,7 @@ const ArcPortal = () => {
                   <Input
                     id="edit-agency"
                     value={editSolicitationData.agency}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, agency: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('agency', e.target.value)}
                     placeholder="e.g., Department of Defense"
                   />
                 </div>
@@ -1568,7 +1588,7 @@ const ArcPortal = () => {
                 <Input
                   id="edit-title"
                   value={editSolicitationData.title}
-                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => handleEditSolicitationChange('title', e.target.value)}
                   placeholder="Enter solicitation title"
                 />
               </div>
@@ -1578,7 +1598,7 @@ const ArcPortal = () => {
                 <Textarea
                   id="edit-description"
                   value={editSolicitationData.description}
-                  onChange={(e) => setEditSolicitationData(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => handleEditSolicitationChange('description', e.target.value)}
                   placeholder="Enter detailed description"
                   rows={3}
                 />
@@ -1591,7 +1611,7 @@ const ArcPortal = () => {
                     id="edit-dueDate"
                     type="datetime-local"
                     value={editSolicitationData.dueDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, dueDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('dueDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1600,7 +1620,7 @@ const ArcPortal = () => {
                     id="edit-questionCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.questionCutoffDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, questionCutoffDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('questionCutoffDate', e.target.value)}
                   />
                 </div>
                 <div>
@@ -1609,14 +1629,14 @@ const ArcPortal = () => {
                     id="edit-proposalCutoffDate"
                     type="datetime-local"
                     value={editSolicitationData.proposalCutoffDate}
-                    onChange={(e) => setEditSolicitationData(prev => ({ ...prev, proposalCutoffDate: e.target.value }))}
+                    onChange={(e) => handleEditSolicitationChange('proposalCutoffDate', e.target.value)}
                   />
                 </div>
               </div>
               
               <div>
                 <Label htmlFor="edit-status">Status</Label>
-                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => setEditSolicitationData(prev => ({ ...prev, status: value }))}>
+                <Select value={editSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleEditSolicitationChange('status', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -2268,7 +2288,7 @@ const ArcPortal = () => {
               <p className="text-sm text-gray-600 mb-3">Add any additional notes or comments for your proposal</p>
               <Textarea
                 value={proposalData.notes}
-                onChange={(e) => setProposalData((prev: any) => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) => handleProposalDataChange('notes', e.target.value)}
                 placeholder="Enter any additional information, clarifications, or notes about your proposal..."
                 rows={4}
                 className="border-green-200 focus:border-green-400"
@@ -4219,7 +4239,7 @@ const ArcPortal = () => {
                   <Input
                     id="name"
                     value={editData.name}
-                    onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => handleEditDataChange('name', e.target.value)}
                     placeholder="Enter your full name"
                   />
                 ) : (
@@ -4234,7 +4254,7 @@ const ArcPortal = () => {
                     id="email"
                     type="email"
                     value={editData.email}
-                    onChange={(e) => setEditData(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => handleEditDataChange('email', e.target.value)}
                     placeholder="Enter your email address"
                   />
                 ) : (
@@ -4264,7 +4284,7 @@ const ArcPortal = () => {
                   <Input
                     id="companyName"
                     value={editData.companyName}
-                    onChange={(e) => setEditData(prev => ({ ...prev, companyName: e.target.value }))}
+                    onChange={(e) => handleEditDataChange('companyName', e.target.value)}
                     placeholder="Enter company name"
                   />
                 ) : (
@@ -4281,7 +4301,7 @@ const ArcPortal = () => {
                   <Input
                     id="ueiNumber"
                     value={editData.ueiNumber}
-                    onChange={(e) => setEditData(prev => ({ ...prev, ueiNumber: e.target.value }))}
+                    onChange={(e) => handleEditDataChange('ueiNumber', e.target.value)}
                     placeholder="12 character UEI"
                     maxLength={12}
                   />
