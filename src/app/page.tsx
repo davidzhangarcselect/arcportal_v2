@@ -181,14 +181,14 @@ const ArcPortal = () => {
 
   // Update proposal data when solicitation changes
   useEffect(() => {
-    if (selectedSolicitation) {
+    if (selectedSolicitation && currentUser) {
       setProposalData((prev: any) => ({
         ...prev,
         solicitationId: selectedSolicitation.id,
-        vendorId: currentUser?.id || 0
+        vendorId: currentUser.id
       }));
     }
-  }, [selectedSolicitation]);
+  }, [selectedSolicitation, currentUser]);
 
   // Authentication
   const login = (userData: SampleUser, type: 'vendor' | 'admin') => {
@@ -652,18 +652,22 @@ const ArcPortal = () => {
   // Proposal submission
   const submitProposal = async (proposalData: Partial<SampleProposal>) => {
     try {
+      const submissionData = {
+        vendorId: proposalData.vendorId || currentUser?.id,
+        solicitationId: proposalData.solicitationId,
+        notes: proposalData.notes || '',
+        technicalFiles: proposalData.technicalFiles || [],
+        pastPerformanceFiles: proposalData.pastPerformanceFiles || []
+      };
+      
+      console.log('Submitting proposal with data:', submissionData);
+      
       const response = await fetch('/api/proposals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          vendorId: proposalData.vendorId || currentUser?.id,
-          solicitationId: proposalData.solicitationId,
-          notes: '',
-          technicalFiles: proposalData.technicalFiles || [],
-          pastPerformanceFiles: proposalData.pastPerformanceFiles || []
-        }),
+        body: JSON.stringify(submissionData),
       });
 
       if (response.ok) {
@@ -682,12 +686,21 @@ const ArcPortal = () => {
         setProposals([...proposals, formattedProposal]);
         return formattedProposal;
       } else {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('Failed to submit proposal:', response.status, errorData);
+        
+        // Show more specific error message
+        if (errorData.error) {
+          alert(`Failed to submit proposal: ${errorData.error}`);
+        } else {
+          alert('Failed to submit proposal. Please check the console for details.');
+        }
+        
         return null;
       }
     } catch (error) {
       console.error('Error submitting proposal:', error);
+      alert('Network error while submitting proposal. Please check your connection and try again.');
       return null;
     }
   };
