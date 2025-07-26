@@ -62,6 +62,37 @@ async function main() {
     },
   })
 
+  // Create periods for solicitations
+  const basePeriod1 = await prisma.period.create({
+    data: {
+      name: 'Base Period',
+      type: 'BASE',
+      startDate: new Date('2025-09-01'),
+      endDate: new Date('2026-08-31'),
+      solicitationId: solicitation1.id,
+    },
+  })
+
+  const optionPeriod1 = await prisma.period.create({
+    data: {
+      name: 'Option Period 1',
+      type: 'OPTION',
+      startDate: new Date('2026-09-01'),
+      endDate: new Date('2027-08-31'),
+      solicitationId: solicitation1.id,
+    },
+  })
+
+  const basePeriod2 = await prisma.period.create({
+    data: {
+      name: 'Base Period',
+      type: 'BASE',
+      startDate: new Date('2025-10-01'),
+      endDate: new Date('2026-09-30'),
+      solicitationId: solicitation2.id,
+    },
+  })
+
   // Create CLINs for solicitations
   await prisma.clin.createMany({
     data: [
@@ -69,28 +100,28 @@ async function main() {
         name: '0001',
         description: 'Software Development Services',
         pricingModel: 'TM',
-        periodId: 'base_year_1',
+        periodId: basePeriod1.id,
         solicitationId: solicitation1.id,
       },
       {
         name: '0002',
         description: 'Maintenance & Support',
         pricingModel: 'FFP',
-        periodId: 'base_year_1',
+        periodId: basePeriod1.id,
         solicitationId: solicitation1.id,
       },
       {
         name: '1001',
         description: 'Software Development Services - Option Year 1',
         pricingModel: 'TM',
-        periodId: 'option_year_1',
+        periodId: optionPeriod1.id,
         solicitationId: solicitation1.id,
       },
       {
         name: '0001',
         description: 'Security Assessment',
         pricingModel: 'FFP',
-        periodId: 'base_year_1',
+        periodId: basePeriod2.id,
         solicitationId: solicitation2.id,
       },
     ],
