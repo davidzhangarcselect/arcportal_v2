@@ -3682,88 +3682,100 @@ const ArcPortal = () => {
   };
 
   // Admin Proposal Review Component
-  const ProposalReview = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Proposal Review</h2>
-            
-      <Card>
-        <CardHeader>
-          <CardTitle>All Proposals</CardTitle>
-          <CardDescription>Review and evaluate submitted proposals</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {proposals.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">No proposals submitted yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {proposals.map(proposal => (
-                <div key={proposal.id}>
-                  <div className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-medium">Proposal #{proposal.id}</p>
-                        <p className="text-sm text-gray-600">
-                          Solicitation: {solicitations.find(s => s.id === proposal.solicitationId)?.number}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Vendor: {vendors.find(v => v.id === proposal.vendorId)?.companyName || 'Unknown Vendor'}
-                        </p>
-                        <p className="text-sm text-gray-600">Submitted: {proposal.submissionDate}</p>
-                        <p className="text-sm text-gray-600">
-                          Files: {proposal.technicalFiles?.length || 0} technical, {proposal.pastPerformanceFiles?.length || 0} past performance
-                        </p>
+  const ProposalReview = () => {
+    if (selectedProposal) {
+      return (
+        <ProposalDetailView 
+          proposal={selectedProposal}
+          onBack={() => setSelectedProposal(null)}
+          onUpdate={updateProposal}
+        />
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Proposal Review</h2>
+              
+        <Card>
+          <CardHeader>
+            <CardTitle>All Proposals</CardTitle>
+            <CardDescription>Review and evaluate submitted proposals</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {proposals.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No proposals submitted yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {proposals.map(proposal => (
+                  <div key={proposal.id}>
+                    <div className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-medium">Proposal #{proposal.id}</p>
+                          <p className="text-sm text-gray-600">
+                            Solicitation: {solicitations.find(s => s.id === proposal.solicitationId)?.number}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Vendor: {vendors.find(v => v.id === proposal.vendorId)?.companyName || 'Unknown Vendor'}
+                          </p>
+                          <p className="text-sm text-gray-600">Submitted: {proposal.submissionDate}</p>
+                          <p className="text-sm text-gray-600">
+                            Files: {proposal.technicalFiles?.length || 0} technical, {proposal.pastPerformanceFiles?.length || 0} past performance
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge variant="outline">{proposal.status.replace('_', ' ').toUpperCase()}</Badge>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedProposal(proposal)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Review
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="outline">{proposal.status.replace('_', ' ').toUpperCase()}</Badge>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setSelectedProposal(proposal)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Review
+                                          
+                      <div className="flex gap-2 pt-3 border-t">
+                        <Button size="sm" variant="outline"
+                                onClick={() => {
+                                  const updatedProposals = proposals.map(p =>
+                                    p.id === proposal.id ? { ...p, status: 'under_review' } : p
+                                  );
+                                  setProposals(updatedProposals);
+                                }}>
+                          Mark Under Review
+                        </Button>
+                        <Button size="sm" variant="outline"
+                                onClick={() => {
+                                  const updatedProposals = proposals.map(p =>
+                                    p.id === proposal.id ? { ...p, status: 'awarded' } : p
+                                  );
+                                  setProposals(updatedProposals);
+                                }}>
+                          Award Contract
+                        </Button>
+                        <Button size="sm" variant="outline"
+                                onClick={() => {
+                                  const updatedProposals = proposals.map(p =>
+                                    p.id === proposal.id ? { ...p, status: 'rejected' } : p
+                                  );
+                                  setProposals(updatedProposals);
+                                }}>
+                          Reject
                         </Button>
                       </div>
                     </div>
-                                        
-                    <div className="flex gap-2 pt-3 border-t">
-                      <Button size="sm" variant="outline"
-                              onClick={() => {
-                                const updatedProposals = proposals.map(p =>
-                                  p.id === proposal.id ? { ...p, status: 'under_review' } : p
-                                );
-                                setProposals(updatedProposals);
-                              }}>
-                        Mark Under Review
-                      </Button>
-                      <Button size="sm" variant="outline"
-                              onClick={() => {
-                                const updatedProposals = proposals.map(p =>
-                                  p.id === proposal.id ? { ...p, status: 'awarded' } : p
-                                );
-                                setProposals(updatedProposals);
-                              }}>
-                        Award Contract
-                      </Button>
-                      <Button size="sm" variant="outline"
-                              onClick={() => {
-                                const updatedProposals = proposals.map(p =>
-                                  p.id === proposal.id ? { ...p, status: 'rejected' } : p
-                                );
-                                setProposals(updatedProposals);
-                              }}>
-                        Reject
-                      </Button>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   // Vendor Profile Component
   const VendorProfile = () => {
