@@ -36,8 +36,20 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  console.log('POST /api/proposals - Request received')
+  
   try {
-    const body = await request.json()
+    let body;
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      console.error('Failed to parse request JSON:', jsonError)
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      )
+    }
+    
     const { vendorId, solicitationId, notes, technicalFiles, pastPerformanceFiles } = body
     
     console.log('Proposal submission data:', { 
@@ -46,8 +58,8 @@ export async function POST(request: Request) {
       notes, 
       technicalFilesCount: technicalFiles?.length || 0,
       pastPerformanceFilesCount: pastPerformanceFiles?.length || 0,
-      technicalFiles,
-      pastPerformanceFiles
+      technicalFiles: JSON.stringify(technicalFiles),
+      pastPerformanceFiles: JSON.stringify(pastPerformanceFiles)
     })
 
     // Validate required fields
@@ -56,6 +68,28 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Missing required fields: vendorId or solicitationId' },
         { status: 400 }
+      )
+    }
+
+    // Check if vendor exists
+    const vendor = await prisma.user.findUnique({
+      where: { id: vendorId },
+      select: { id: true, role: true }
+    })
+
+    if (!vendor) {
+      console.error('Vendor not found:', vendorId)
+      return NextResponse.json(
+        { error: 'Vendor not found' },
+        { status: 404 }
+      )
+    }
+
+    if (vendor.role !== 'VENDOR') {
+      console.error('User is not a vendor:', { vendorId, role: vendor.role })
+      return NextResponse.json(
+        { error: 'User is not a vendor' },
+        { status: 403 }
       )
     }
 
@@ -96,41 +130,34 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log('Creating proposal with initial data...')
-    const proposal = await prisma.proposal.create({
-      data: {
-        vendorId,
-        solicitationId,
-        notes: notes || ''
-      },
-      include: {
-        vendor: {
-          select: {
-            id: true,
-            companyName: true,
-            email: true
-          }
-        },
-        solicitation: {
-          select: {
-            id: true,
-            number: true,
-            title: true
-          }
-        }
+    // Validate file attachments format
+    let validatedTechnicalFiles = null;
+    let validatedPastPerformanceFiles = null;
+    
+    try {
+      if (technicalFiles && Array.isArray(technicalFiles)) {
+        validatedTechnicalFiles = technicalFiles;
       }
-    })
+      if (pastPerformanceFiles && Array.isArray(pastPerformanceFiles)) {
+        validatedPastPerformanceFiles = pastPerformanceFiles;
+      }
+    } catch (fileError) {
+      console.error('Error validating file attachments:', fileError)
+      return NextResponse.json(
+        { error: 'Invalid file attachment format' },
+        { status: 400 }
+      )
+    }
 
-    console.log('Proposal created with ID:', proposal.id)
-
-    // Update with file attachments if provided
-    if (technicalFiles || pastPerformanceFiles) {
-      console.log('Updating proposal with attachments...')
-      const updatedProposal = await prisma.proposal.update({
-        where: { id: proposal.id },
+    console.log('Creating proposal with data...')
+    try {
+      const proposal = await prisma.proposal.create({
         data: {
-          ...(technicalFiles && { technicalFiles }),
-          ...(pastPerformanceFiles && { pastPerformanceFiles })
+          vendorId,
+          solicitationId,
+          notes: notes || '',
+          technicalFiles: validatedTechnicalFiles || undefined,
+          pastPerformanceFiles: validatedPastPerformanceFiles || undefined
         },
         include: {
           vendor: {
@@ -149,12 +176,17 @@ export async function POST(request: Request) {
           }
         }
       })
-      console.log('Proposal updated successfully')
-      return NextResponse.json(updatedProposal, { status: 201 })
-    }
 
-    console.log('Proposal created successfully without attachments')
-    return NextResponse.json(proposal, { status: 201 })
+      console.log('Proposal created successfully with ID:', proposal.id)
+      return NextResponse.json(proposal, { status: 201 })
+    } catch (dbError) {
+      console.error('Database error creating proposal:', dbError)
+      if (dbError instanceof Error) {
+        console.error('Error message:', dbError.message)
+        console.error('Error stack:', dbError.stack)
+      }
+      throw dbError;
+    }
   } catch (error) {
     console.error('Error creating proposal - Full error:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')

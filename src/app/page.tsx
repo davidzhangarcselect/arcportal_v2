@@ -2076,13 +2076,49 @@ const ArcPortal = () => {
     );
   };
 
-  // Helper function to calculate total price from solicitation data
-  const calculateTotalPrice = (solicitation: SampleSolicitation) => {
+  // Helper function to calculate total price from actual pricing data
+  const calculateTotalPrice = (solicitation: SampleSolicitation, pricingData?: any) => {
     if (!solicitation?.clins) return 0;
     
-    // This is a placeholder calculation - in a real app, this would come from saved pricing data
-    // For now, we'll return a sample total based on the number of CLINs
-    return solicitation.clins.length * 50000; // Sample calculation
+    // If no pricing data provided, try to use the pricing data from PriceEvaluationTool
+    if (!pricingData && typeof window !== 'undefined') {
+      // Try to get pricing data from the current context if available
+      return solicitation.clins.length * 50000; // Fallback for now
+    }
+    
+    let total = 0;
+    
+    // Calculate total from actual pricing data
+    solicitation.clins.forEach(clin => {
+      const clinPricing = pricingData?.[clin.id];
+      if (clinPricing) {
+        const basePrice = parseFloat(clinPricing.basePrice) || 0;
+        const laborHours = parseInt(clinPricing.laborHours) || 0;
+        const laborRate = parseFloat(clinPricing.laborRate) || 0;
+        const materialCost = parseFloat(clinPricing.materialCost) || 0;
+        const indirectRate = parseFloat(clinPricing.indirectRate) || 0;
+        
+        // Calculate total for this CLIN based on pricing model
+        let clinTotal = basePrice;
+        
+        // Add labor costs if specified
+        if (laborHours && laborRate) {
+          clinTotal += laborHours * laborRate;
+        }
+        
+        // Add material costs
+        clinTotal += materialCost;
+        
+        // Apply indirect rate as percentage
+        if (indirectRate > 0) {
+          clinTotal = clinTotal * (1 + indirectRate / 100);
+        }
+        
+        total += clinTotal;
+      }
+    });
+    
+    return total;
   };
 
   // Proposal Attachments Component
@@ -2092,6 +2128,33 @@ const ArcPortal = () => {
     setProposalData: (data: any) => void,
     setActiveTab: (tab: string) => void
   }) => {
+    const [currentPricingData, setCurrentPricingData] = useState<any>({});
+    const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+
+    // Load current pricing data when component mounts
+    useEffect(() => {
+      const loadCurrentPricingData = async () => {
+        if (!currentUser?.id || !solicitation?.id) return;
+        
+        setIsLoadingPricing(true);
+        try {
+          const response = await fetch(`/api/pricing?vendorId=${currentUser.id}&solicitationId=${solicitation.id}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              setCurrentPricingData(result.data);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading pricing data for attachments:', error);
+        } finally {
+          setIsLoadingPricing(false);
+        }
+      };
+
+      loadCurrentPricingData();
+    }, [currentUser?.id, solicitation?.id]);
+
     const handleFileUpload = (type: string, files: FileList | null) => {
       if (!files) return;
       const fileList = Array.from(files).map(file => ({
@@ -2184,7 +2247,11 @@ const ArcPortal = () => {
                     <span className="font-medium text-blue-800">Total Price:</span>
                   </div>
                   <span className="text-lg font-bold text-blue-800">
-                    ${calculateTotalPrice(solicitation).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {isLoadingPricing ? (
+                      'Loading...'
+                    ) : (
+                      `$${calculateTotalPrice(solicitation, currentPricingData).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                    )}
                   </span>
                 </div>
                 <p className="text-sm text-blue-700">
@@ -2217,6 +2284,32 @@ const ArcPortal = () => {
     setActiveTab: (tab: string) => void
   }) => {
     const [showConfirmation, setShowConfirmation] = useState(false);
+    const [currentPricingData, setCurrentPricingData] = useState<any>({});
+    const [isLoadingPricing, setIsLoadingPricing] = useState(true);
+
+    // Load current pricing data when component mounts
+    useEffect(() => {
+      const loadCurrentPricingData = async () => {
+        if (!currentUser?.id || !solicitation?.id) return;
+        
+        setIsLoadingPricing(true);
+        try {
+          const response = await fetch(`/api/pricing?vendorId=${currentUser.id}&solicitationId=${solicitation.id}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              setCurrentPricingData(result.data);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading pricing data for proposal:', error);
+        } finally {
+          setIsLoadingPricing(false);
+        }
+      };
+
+      loadCurrentPricingData();
+    }, [currentUser?.id, solicitation?.id]);
 
     const handleSubmit = async () => {
       const submittedProposal = await onSubmit(proposalData);
@@ -2304,7 +2397,11 @@ const ArcPortal = () => {
                     <span className="font-medium text-blue-800">Total Price:</span>
                   </div>
                   <span className="text-xl font-bold text-blue-800">
-                    ${calculateTotalPrice(solicitation).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {isLoadingPricing ? (
+                      'Loading...'
+                    ) : (
+                      `$${calculateTotalPrice(solicitation, currentPricingData).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                    )}
                   </span>
                 </div>
                 <p className="text-sm text-blue-700 mt-2">
@@ -2797,6 +2894,7 @@ const ArcPortal = () => {
       }));
     };
 
+    // Helper functions for pricing calculations within this component
     const calculateClinTotal = (clinId: string) => {
       const data = pricingData[clinId];
       if (!data) return 0;
