@@ -5,7 +5,7 @@ import Image from 'next/image';
 import {
   Plus, Trash2, Download, Upload, FileText, Calendar, Building2, Users,
   MessageSquare, Send, Eye, Clock, AlertCircle, Calculator,
-  User, LogOut, Bell, Search, Filter, CheckCircle2, AlertTriangle
+  User, LogOut, Bell, Search, Filter, CheckCircle2, AlertTriangle, Edit
 } from 'lucide-react';
 import { SampleSolicitation, SampleQuestion, SampleProposal, SampleUser } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -3615,7 +3615,7 @@ const ArcPortal = () => {
             </div>
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
             <Badge variant={
               proposal.status === 'submitted' ? 'default' :
               proposal.status === 'under_review' ? 'secondary' :
@@ -3623,9 +3623,13 @@ const ArcPortal = () => {
             }>
               {proposal.status.replace('_', ' ').toUpperCase()}
             </Badge>
-            {proposal.status === 'submitted' && !isEditing && userType !== 'admin' && (
-              <Button onClick={() => setIsEditing(true)} variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
+            
+            {userType === 'admin' && !isEditing && (
+              <Button 
+                onClick={() => setIsEditing(true)} 
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Edit className="h-4 w-4 mr-2" />
                 Edit Proposal
               </Button>
             )}
