@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import {
   Plus, Trash2, Download, Upload, FileText, Calendar, Building2, Users,
@@ -711,6 +711,14 @@ const ArcPortal = () => {
       p.id === proposalId ? { ...p, ...updatedData } : p
     ));
     setSelectedProposal(null);
+  };
+
+  const updateProposalInPlace = (proposalId: string, updatedData: Partial<SampleProposal>) => {
+    setProposals(prev => prev.map(p => 
+      p.id === proposalId ? { ...p, ...updatedData } : p
+    ));
+    // Update the selected proposal as well to reflect changes immediately
+    setSelectedProposal(prev => prev ? { ...prev, ...updatedData } : null);
   };
 
   // Login form - show if no current user
@@ -3474,6 +3482,7 @@ const ArcPortal = () => {
           proposal={selectedProposal}
           onBack={() => setSelectedProposal(null)}
           onUpdate={updateProposal}
+          onUpdateInPlace={updateProposalInPlace}
           userType={userType}
         />
       );
@@ -3565,7 +3574,7 @@ const ArcPortal = () => {
   };
 
   // Proposal Detail View Component
-  const ProposalDetailView = ({ proposal, onBack, onUpdate, userType }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void, userType: string }) => {
+  const ProposalDetailView = ({ proposal, onBack, onUpdate, onUpdateInPlace, userType }: { proposal: SampleProposal, onBack: () => void, onUpdate: (id: string, data: any) => void, onUpdateInPlace?: (id: string, data: any) => void, userType: string }) => {
     const solicitation = solicitations.find(s => s.id === proposal.solicitationId);
     const [isEditing, setIsEditing] = useState(false);
     const [isEditingAdminNotes, setIsEditingAdminNotes] = useState(false);
@@ -3617,9 +3626,15 @@ const ArcPortal = () => {
     };
 
     const handleSaveAdminNotes = () => {
-      onUpdate(proposal.id, { ...proposal, adminNotes: adminNotesText });
+      const updateFunction = onUpdateInPlace || onUpdate;
+      updateFunction(proposal.id, { ...proposal, adminNotes: adminNotesText });
       setIsEditingAdminNotes(false);
     };
+
+    const handleVendorNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      e.preventDefault();
+      setEditData(prev => ({ ...prev, notes: e.target.value }));
+    }, []);
 
     return (
       <div className="space-y-6">
@@ -3903,11 +3918,13 @@ const ArcPortal = () => {
           <CardContent>
             {isEditing && userType === 'vendor' ? (
               <Textarea
+                key="vendor-notes-textarea"
                 value={editData.notes}
-                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={handleVendorNotesChange}
                 placeholder="Add any additional information, clarifications, or notes about your proposal..."
                 rows={4}
                 className="border-green-200 focus:border-green-400"
+                autoFocus={false}
               />
             ) : (
               <div className="min-h-[60px] p-3 bg-green-50 border border-green-200 rounded-md">
@@ -4016,6 +4033,7 @@ const ArcPortal = () => {
           proposal={selectedProposal}
           onBack={() => setSelectedProposal(null)}
           onUpdate={updateProposal}
+          onUpdateInPlace={updateProposalInPlace}
           userType={userType}
         />
       );
