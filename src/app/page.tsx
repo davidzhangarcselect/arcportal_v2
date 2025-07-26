@@ -2155,13 +2155,26 @@ const ArcPortal = () => {
       loadCurrentPricingData();
     }, [currentUser?.id, solicitation?.id]);
 
-    const handleFileUpload = (type: string, files: FileList | null) => {
+    const handleFileUpload = async (type: string, files: FileList | null) => {
       if (!files) return;
-      const fileList = Array.from(files).map(file => ({
-        name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-        type: file.type
-      }));
+      
+      const fileList = await Promise.all(
+        Array.from(files).map(async (file) => {
+          // Convert file to base64 for storage
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          
+          return {
+            name: file.name,
+            size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+            type: file.type,
+            url: base64 // Store base64 data URL for download
+          };
+        })
+      );
       
       setProposalData((prev: any) => ({
         ...prev,
@@ -3549,13 +3562,26 @@ const ArcPortal = () => {
       notes: proposal.notes || ''
     });
 
-    const handleFileUpload = (type: string, files: FileList | null) => {
+    const handleFileUpload = async (type: string, files: FileList | null) => {
       if (!files) return;
-      const fileList = Array.from(files).map(file => ({
-        name: file.name,
-        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-        type: file.type
-      }));
+      
+      const fileList = await Promise.all(
+        Array.from(files).map(async (file) => {
+          // Convert file to base64 for storage
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+          
+          return {
+            name: file.name,
+            size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+            type: file.type,
+            url: base64 // Store base64 data URL for download
+          };
+        })
+      );
       
       setEditData(prev => ({
         ...prev,
@@ -3694,9 +3720,42 @@ const ArcPortal = () => {
             ) : (
               <div className="space-y-2">
                 {(proposal.technicalFiles || []).map((file: any, index: number) => (
-                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">{file.name} ({file.size})</span>
+                  <div key={index} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm">{file.name} ({file.size})</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // Create a download link for the file
+                        if (file.url) {
+                          const link = document.createElement('a');
+                          link.href = file.url;
+                          link.download = file.name;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        } else {
+                          // For demo files without actual content, create a placeholder
+                          const placeholderContent = `This is a placeholder for ${file.name}\n\nFile Type: ${file.type}\nSize: ${file.size}\n\nIn a real application, this would be the actual file content.`;
+                          const blob = new Blob([placeholderContent], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = file.name.replace(/\.[^/.]+$/, '') + '.txt'; // Change extension to .txt for placeholder
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                        }
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
                   </div>
                 ))}
                 {(!proposal.technicalFiles || proposal.technicalFiles.length === 0) && (
@@ -3750,9 +3809,42 @@ const ArcPortal = () => {
             ) : (
               <div className="space-y-2">
                 {(proposal.pastPerformanceFiles || []).map((file: any, index: number) => (
-                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">{file.name} ({file.size})</span>
+                  <div key={index} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">{file.name} ({file.size})</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        // Create a download link for the file
+                        if (file.url) {
+                          const link = document.createElement('a');
+                          link.href = file.url;
+                          link.download = file.name;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        } else {
+                          // For demo files without actual content, create a placeholder
+                          const placeholderContent = `This is a placeholder for ${file.name}\n\nFile Type: ${file.type}\nSize: ${file.size}\n\nIn a real application, this would be the actual file content.`;
+                          const blob = new Blob([placeholderContent], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.download = file.name.replace(/\.[^/.]+$/, '') + '.txt'; // Change extension to .txt for placeholder
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          URL.revokeObjectURL(url);
+                        }
+                      }}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
                   </div>
                 ))}
                 {(!proposal.pastPerformanceFiles || proposal.pastPerformanceFiles.length === 0) && (
