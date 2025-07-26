@@ -1197,8 +1197,37 @@ const ArcPortal = () => {
     );
   };
 
-  // Create Solicitation Form Component
+  // Create Solicitation Form Component with internal state
   const CreateSolicitationForm = React.memo(() => {
+    const [formData, setFormData] = useState({
+      number: '',
+      title: '',
+      description: '',
+      agency: '',
+      dueDate: '',
+      questionCutoffDate: '',
+      proposalCutoffDate: '',
+      status: 'open' as 'open' | 'closed'
+    });
+
+    const handleFieldChange = useCallback((field: string, value: string) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }, []);
+
+    const handleSubmit = useCallback(() => {
+      createSolicitation(formData);
+      setFormData({
+        number: '',
+        title: '',
+        description: '',
+        agency: '',
+        dueDate: '',
+        questionCutoffDate: '',
+        proposalCutoffDate: '',
+        status: 'open'
+      });
+    }, [formData]);
+
     return (
       <Card>
         <CardHeader>
@@ -1210,8 +1239,8 @@ const ArcPortal = () => {
               <Label htmlFor="number">Solicitation Number</Label>
               <Input
                 id="number"
-                value={newSolicitationData.number}
-                onChange={(e) => handleNewSolicitationChange('number', e.target.value)}
+                value={formData.number}
+                onChange={(e) => handleFieldChange('number', e.target.value)}
                 placeholder="e.g., RFP-2024-001"
               />
             </div>
@@ -1219,8 +1248,8 @@ const ArcPortal = () => {
               <Label htmlFor="agency">Agency</Label>
               <Input
                 id="agency"
-                value={newSolicitationData.agency}
-                onChange={(e) => handleNewSolicitationChange('agency', e.target.value)}
+                value={formData.agency}
+                onChange={(e) => handleFieldChange('agency', e.target.value)}
                 placeholder="e.g., Department of Defense"
               />
             </div>
@@ -1230,8 +1259,8 @@ const ArcPortal = () => {
             <Label htmlFor="title">Title</Label>
             <Input
               id="title"
-              value={newSolicitationData.title}
-              onChange={(e) => handleNewSolicitationChange('title', e.target.value)}
+              value={formData.title}
+              onChange={(e) => handleFieldChange('title', e.target.value)}
               placeholder="Enter solicitation title"
             />
           </div>
@@ -1240,8 +1269,8 @@ const ArcPortal = () => {
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={newSolicitationData.description}
-              onChange={(e) => handleNewSolicitationChange('description', e.target.value)}
+              value={formData.description}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
               placeholder="Enter detailed description"
               rows={3}
             />
@@ -1253,8 +1282,8 @@ const ArcPortal = () => {
               <Input
                 id="dueDate"
                 type="datetime-local"
-                value={newSolicitationData.dueDate}
-                onChange={(e) => handleNewSolicitationChange('dueDate', e.target.value)}
+                value={formData.dueDate}
+                onChange={(e) => handleFieldChange('dueDate', e.target.value)}
               />
             </div>
             <div>
@@ -1262,8 +1291,8 @@ const ArcPortal = () => {
               <Input
                 id="questionCutoffDate"
                 type="datetime-local"
-                value={newSolicitationData.questionCutoffDate}
-                onChange={(e) => handleNewSolicitationChange('questionCutoffDate', e.target.value)}
+                value={formData.questionCutoffDate}
+                onChange={(e) => handleFieldChange('questionCutoffDate', e.target.value)}
               />
             </div>
             <div>
@@ -1271,15 +1300,15 @@ const ArcPortal = () => {
               <Input
                 id="proposalCutoffDate"
                 type="datetime-local"
-                value={newSolicitationData.proposalCutoffDate}
-                onChange={(e) => handleNewSolicitationChange('proposalCutoffDate', e.target.value)}
+                value={formData.proposalCutoffDate}
+                onChange={(e) => handleFieldChange('proposalCutoffDate', e.target.value)}
               />
             </div>
           </div>
           
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select value={newSolicitationData.status} onValueChange={(value: 'open' | 'closed') => handleNewSolicitationChange('status', value)}>
+            <Select value={formData.status} onValueChange={(value: 'open' | 'closed') => handleFieldChange('status', value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -1295,8 +1324,8 @@ const ArcPortal = () => {
               Cancel
             </Button>
             <Button 
-              onClick={() => createSolicitation(newSolicitationData)}
-              disabled={!newSolicitationData.number || !newSolicitationData.title || !newSolicitationData.description}
+              onClick={handleSubmit}
+              disabled={!formData.number || !formData.title || !formData.description}
             >
               Create Solicitation
             </Button>
