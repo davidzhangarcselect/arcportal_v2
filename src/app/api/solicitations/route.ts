@@ -42,7 +42,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, evaluationPeriods, periodClins } = body
+    const { number, title, agency, description, questionCutoffDate, proposalCutoffDate, evaluationPeriods, periodClins, technicalRequirements, pastPerformanceRequirements } = body
 
     // Create solicitation first
     const solicitation = await prisma.solicitation.create({
@@ -53,7 +53,9 @@ export async function POST(request: Request) {
         description,
         questionCutoffDate: questionCutoffDate ? new Date(questionCutoffDate) : null,
         proposalCutoffDate: proposalCutoffDate ? new Date(proposalCutoffDate) : null,
-        evaluationPeriods: evaluationPeriods || null
+        evaluationPeriods: evaluationPeriods || null,
+        technicalRequirements: technicalRequirements || null,
+        pastPerformanceRequirements: pastPerformanceRequirements || null
       }
     })
 
@@ -115,7 +117,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, number, title, agency, description, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins } = body
+    const { id, number, title, agency, description, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins, technicalRequirements, pastPerformanceRequirements } = body
 
     console.log('🔄 API PUT received for solicitation:', id);
     console.log('📅 Received evaluationPeriods:', evaluationPeriods);
@@ -186,6 +188,8 @@ export async function PUT(request: Request) {
     if (questionCutoffDate !== undefined) updateData.questionCutoffDate = new Date(questionCutoffDate);
     if (proposalCutoffDate !== undefined) updateData.proposalCutoffDate = new Date(proposalCutoffDate);
     if (evaluationPeriods !== undefined) updateData.evaluationPeriods = JSON.stringify(evaluationPeriods);
+    if (technicalRequirements !== undefined) updateData.technicalRequirements = technicalRequirements;
+    if (pastPerformanceRequirements !== undefined) updateData.pastPerformanceRequirements = pastPerformanceRequirements;
     if (status !== undefined) updateData.status = status.toUpperCase();
 
     const solicitation = await prisma.solicitation.update({
