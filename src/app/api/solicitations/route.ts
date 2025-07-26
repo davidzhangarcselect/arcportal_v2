@@ -20,6 +20,15 @@ export async function GET() {
 
 
 
+    // Log what we're returning for debugging
+    const rfp002 = solicitations.find(s => s.number === 'RFP-2025-002');
+    if (rfp002) {
+      console.log('📤 API GET returning for RFP-2025-002:');
+      console.log('  - evaluationPeriods:', (rfp002 as any).evaluationPeriods);
+      console.log('  - clins count:', rfp002.clins.length);
+      console.log('  - clins:', rfp002.clins.map((c: any) => `${c.name}(${c.periodId})`).join(', '));
+    }
+
     return NextResponse.json(solicitations)
   } catch (error) {
     console.error('Error fetching solicitations:', error)
@@ -71,6 +80,10 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json()
     const { id, number, title, agency, description, dueDate, questionCutoffDate, proposalCutoffDate, status, evaluationPeriods, clins } = body
+
+    console.log('🔄 API PUT received for solicitation:', id);
+    console.log('📅 Received evaluationPeriods:', evaluationPeriods);
+    console.log('📋 Received clins:', clins);
 
     if (!id) {
       return NextResponse.json(

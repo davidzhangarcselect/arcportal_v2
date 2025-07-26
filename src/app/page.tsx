@@ -2339,12 +2339,18 @@ const ArcPortal = () => {
     // Initialize with solicitation data
     useEffect(() => {
       if (solicitation && currentUser) {
+        console.log('🔄 LOADING DATA for solicitation:', solicitation.number);
+        console.log('📋 Raw solicitation.evaluationPeriods:', solicitation.evaluationPeriods);
+        console.log('📋 Raw solicitation.clins:', solicitation.clins);
+        
         // Load evaluation periods from solicitation or use defaults
         const periods = solicitation.evaluationPeriods 
           ? (typeof solicitation.evaluationPeriods === 'string' 
               ? JSON.parse(solicitation.evaluationPeriods) 
               : solicitation.evaluationPeriods)
           : [{ id: 'base_year_1', name: 'Base Year', type: 'base' }];
+        
+        console.log('📅 Parsed evaluation periods:', periods);
         setEvaluationPeriods(periods);
 
         // Organize CLINs by period
@@ -2358,6 +2364,7 @@ const ArcPortal = () => {
         // Group existing CLINs by period (if they have periodId)
         solicitation.clins.forEach(clin => {
           const periodId = clin.periodId || 'base_year_1'; // Default to base year if no periodId
+          console.log(`🔗 Assigning CLIN ${clin.name} to period ${periodId}`);
           if (!clinsByPeriod[periodId]) {
             clinsByPeriod[periodId] = [];
           }
@@ -2366,6 +2373,8 @@ const ArcPortal = () => {
             description: clin.description || 'Contract Line Item'
           });
         });
+        
+        console.log('🗂️ Final CLINs organized by period:', clinsByPeriod);
 
         // If no CLINs exist, create default ones for base period
         if (solicitation.clins.length === 0 && periods.length > 0) {
@@ -2420,6 +2429,10 @@ const ArcPortal = () => {
     const saveSetup = async () => {
       if (!solicitation || userType !== 'admin') return;
       
+      console.log('💾 SAVING SETUP for solicitation:', solicitation.number);
+      console.log('📅 Current evaluationPeriods state:', evaluationPeriods);
+      console.log('🗂️ Current periodClins state:', periodClins);
+      
       setIsSaving(true);
       try {
         // Flatten all CLINs from all periods for API
@@ -2431,6 +2444,9 @@ const ArcPortal = () => {
             periodId: periodId
           }))
         );
+
+        console.log('📤 Sending to API - evaluationPeriods:', evaluationPeriods);
+        console.log('📤 Sending to API - allClins:', allClins);
 
         const response = await fetch('/api/solicitations', {
           method: 'PUT',
