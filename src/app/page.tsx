@@ -3152,20 +3152,71 @@ const ArcPortal = () => {
           clinsByPeriod[period.id] = [];
         });
 
-        // Group existing CLINs by period (if they have periodId)
-        solicitation.clins.forEach(clin => {
-          const periodId = clin.periodId || 'base_period_1'; // Default to base period if no periodId
-          console.log(`🔗 Assigning CLIN ${clin.name} to period ${periodId}`);
-          if (!clinsByPeriod[periodId]) {
-            clinsByPeriod[periodId] = [];
-          }
-          clinsByPeriod[periodId].push({
-            ...clin,
-            description: clin.description || 'Contract Line Item'
+        // Create mapping between database periods and evaluation periods
+        console.log('🔍 DEBUGGING CLIN ASSIGNMENT:');
+        console.log('📋 Available evaluation periods:', periods.map((p: any) => `${p.id} (${p.name})`));
+        console.log('📋 Available database periods:', solicitation.periods?.map((p: any) => `${p.id} (${p.name} - ${p.type})`));
+        console.log('📋 Available CLINs:', solicitation.clins.map((c: any) => `${c.name} -> periodId: ${c.periodId}`));
+        
+        // Create a mapping from database period ID to evaluation period ID
+        const periodMapping: {[dbPeriodId: string]: string} = {};
+        
+        if (solicitation.periods) {
+          solicitation.periods.forEach((dbPeriod: any) => {
+            // Find matching evaluation period by type and name
+            const matchingEvalPeriod = periods.find((evalPeriod: any) => {
+              const dbType = dbPeriod.type.toLowerCase();
+              const evalType = evalPeriod.type.toLowerCase();
+              
+              // Match base periods
+              if (dbType === 'base' && evalType === 'base') {
+                return true;
+              }
+              
+              // Match option periods by name similarity
+              if (dbType === 'option' && evalType === 'option') {
+                return dbPeriod.name.toLowerCase().includes('option') && evalPeriod.name.toLowerCase().includes('option');
+              }
+              
+              return false;
+            });
+            
+            if (matchingEvalPeriod) {
+              periodMapping[dbPeriod.id] = matchingEvalPeriod.id;
+              console.log(`🔗 Mapped DB period ${dbPeriod.id} (${dbPeriod.name}) -> Eval period ${matchingEvalPeriod.id} (${matchingEvalPeriod.name})`);
+            } else {
+              console.warn(`⚠️ No matching evaluation period found for DB period ${dbPeriod.id} (${dbPeriod.name})`);
+            }
           });
+        }
+        
+        // Group existing CLINs by evaluation period using the mapping
+        solicitation.clins.forEach((clin: any) => {
+          const dbPeriodId = clin.periodId;
+          const evalPeriodId = periodMapping[dbPeriodId] || 'base_period_1'; // Default to base period
+          
+          console.log(`🔗 Assigning CLIN ${clin.name} from DB period ${dbPeriodId} to eval period ${evalPeriodId}`);
+          
+          if (!clinsByPeriod[evalPeriodId]) {
+            console.warn(`⚠️ Evaluation period ${evalPeriodId} not found in clinsByPeriod, creating it`);
+            clinsByPeriod[evalPeriodId] = [];
+          }
+          
+          clinsByPeriod[evalPeriodId].push({
+            ...clin,
+            description: clin.description || 'Contract Line Item',
+            originalPeriodId: dbPeriodId // Keep track of original DB period ID
+          });
+          
+          console.log(`   - CLINs now in eval period ${evalPeriodId}:`, clinsByPeriod[evalPeriodId].length);
         });
         
         console.log('🗂️ Final CLINs organized by period:', clinsByPeriod);
+        console.log('🔍 DETAILED BREAKDOWN:');
+        Object.entries(clinsByPeriod).forEach(([periodId, clins]) => {
+          console.log(`   Period ${periodId}: ${clins.length} CLINs`);
+          clins.forEach(clin => console.log(`     - ${clin.name}: ${clin.description}`));
+        });
 
         // If no CLINs exist, create default ones for base period
         if (solicitation.clins.length === 0 && periods.length > 0) {
@@ -3184,6 +3235,8 @@ const ArcPortal = () => {
         }
 
         console.log('🔄 SETTING INITIAL periodClins state:', clinsByPeriod);
+        console.log('🔄 Total periods with CLINs:', Object.keys(clinsByPeriod).length);
+        console.log('🔄 Total CLINs across all periods:', Object.values(clinsByPeriod).flat().length);
         setPeriodClins(clinsByPeriod);
 
         // Store original setup for change tracking
@@ -3233,12 +3286,14 @@ const ArcPortal = () => {
       setIsSaving(true);
       try {
         // Flatten all CLINs from all periods for API
-        const allClins = Object.entries(periodClins).flatMap(([periodId, clins]) => 
+        // Need to map evaluation period IDs back to database period IDs
+        const allClins = Object.entries(periodClins).flatMap(([evalPeriodId, clins]) => 
           clins.map(clin => ({
             name: clin.name,
             description: clin.description,
             pricingModel: clin.pricingModel,
-            periodId: periodId
+            // Use original database period ID if available, otherwise use evaluation period ID
+            periodId: clin.originalPeriodId || evalPeriodId
           }))
         );
 

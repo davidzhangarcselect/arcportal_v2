@@ -6,6 +6,7 @@ export async function GET() {
     const solicitations = await prisma.solicitation.findMany({
       include: {
         clins: true,
+        periods: true,
         _count: {
           select: {
             proposals: true,
@@ -206,6 +207,7 @@ export async function PUT(request: Request) {
       data: updateData,
       include: {
         clins: true,
+        periods: true,
         _count: {
           select: {
             proposals: true,
