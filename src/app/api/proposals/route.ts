@@ -39,6 +39,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { vendorId, solicitationId, notes, technicalFiles, pastPerformanceFiles } = body
+    
+    console.log('Proposal submission data:', { vendorId, solicitationId, notes, technicalFiles, pastPerformanceFiles })
 
     // Check if solicitation exists and get cutoff date
     const solicitation = await prisma.solicitation.findUnique({
@@ -78,9 +80,7 @@ export async function POST(request: Request) {
       data: {
         vendorId,
         solicitationId,
-        notes,
-        technicalFiles: technicalFiles || [],
-        pastPerformanceFiles: pastPerformanceFiles || []
+        notes
       },
       include: {
         vendor: {
@@ -99,6 +99,34 @@ export async function POST(request: Request) {
         }
       }
     })
+
+    // Update with file attachments if provided
+    if (technicalFiles || pastPerformanceFiles) {
+      const updatedProposal = await prisma.proposal.update({
+        where: { id: proposal.id },
+        data: {
+          ...(technicalFiles && { technicalFiles }),
+          ...(pastPerformanceFiles && { pastPerformanceFiles })
+        },
+        include: {
+          vendor: {
+            select: {
+              id: true,
+              companyName: true,
+              email: true
+            }
+          },
+          solicitation: {
+            select: {
+              id: true,
+              number: true,
+              title: true
+            }
+          }
+        }
+      })
+      return NextResponse.json(updatedProposal, { status: 201 })
+    }
 
     return NextResponse.json(proposal, { status: 201 })
   } catch (error) {

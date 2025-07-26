@@ -682,7 +682,8 @@ const ArcPortal = () => {
         setProposals([...proposals, formattedProposal]);
         return formattedProposal;
       } else {
-        console.error('Failed to submit proposal');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to submit proposal:', response.status, errorData);
         return null;
       }
     } catch (error) {
