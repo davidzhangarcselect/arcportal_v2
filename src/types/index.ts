@@ -85,6 +85,7 @@ export interface SampleSolicitation {
   status: string;
   attachments: Attachment[];
   clins: SampleClin[];
+  periods?: Period[];
   evaluationPeriods?: EvaluationPeriod[];
   technicalRequirements?: DocumentRequirement[];
   pastPerformanceRequirements?: DocumentRequirement[];
